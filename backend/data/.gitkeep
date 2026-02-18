@@ -1,0 +1,5 @@
+# Data Directory
+
+This directory stores scraped data, historical match data, and training datasets.
+
+Files in this directory are not committed to version control (.gitignore).
