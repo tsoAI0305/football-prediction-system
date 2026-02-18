@@ -8,7 +8,7 @@ from app.database import Base, get_db
 from app.models.team import Team
 from app.models.match import Match, MatchStatus
 from app.models.prediction import Prediction, PredictionResult
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Setup test database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -95,7 +95,7 @@ def test_get_matches_with_data():
     # Create match
     match = Match(
         league="ENG_PL",
-        match_date=datetime.utcnow() + timedelta(days=1),
+        match_date=datetime.now(timezone.utc) + timedelta(days=1),
         status=MatchStatus.SCHEDULED,
         home_team_id=team1.id,
         away_team_id=team2.id,
@@ -129,7 +129,7 @@ def test_get_match_detail():
     
     match = Match(
         league="ENG_PL",
-        match_date=datetime.utcnow(),
+        match_date=datetime.now(timezone.utc),
         status=MatchStatus.SCHEDULED,
         home_team_id=team1.id,
         away_team_id=team2.id,
@@ -170,7 +170,7 @@ def test_create_prediction():
     
     match = Match(
         league="GER_B1",
-        match_date=datetime.utcnow() + timedelta(days=2),
+        match_date=datetime.now(timezone.utc) + timedelta(days=2),
         status=MatchStatus.SCHEDULED,
         home_team_id=team1.id,
         away_team_id=team2.id,
@@ -226,7 +226,7 @@ def test_get_history_with_predictions():
     
     match = Match(
         league="ESP_L1",
-        match_date=datetime.utcnow() - timedelta(days=1),
+        match_date=datetime.now(timezone.utc) - timedelta(days=1),
         status=MatchStatus.FINISHED,
         home_team_id=team1.id,
         away_team_id=team2.id,
@@ -280,14 +280,14 @@ def test_matches_filter_by_league():
     
     match1 = Match(
         league="ENG_PL",
-        match_date=datetime.utcnow(),
+        match_date=datetime.now(timezone.utc),
         home_team_id=team1.id,
         away_team_id=team2.id,
         odds_home=2.0, odds_draw=3.0, odds_away=3.5
     )
     match2 = Match(
         league="GER_B1",
-        match_date=datetime.utcnow(),
+        match_date=datetime.now(timezone.utc),
         home_team_id=team3.id,
         away_team_id=team4.id,
         odds_home=2.0, odds_draw=3.0, odds_away=3.5

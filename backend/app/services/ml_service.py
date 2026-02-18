@@ -175,7 +175,8 @@ class MLService:
         
         # Calculate value
         market_prob = 1 / predicted_odds
-        model_prob = probs[['H', 'D', 'A'].index(prediction)]
+        idx = ['H', 'D', 'A'].index(prediction)
+        model_prob = probs[idx]
         value = (model_prob - market_prob) * 10  # Scale to 0-10
         
         # Generate advice
