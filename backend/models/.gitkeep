@@ -1,0 +1,8 @@
+# Models Directory
+
+This directory stores trained ML models.
+
+Files in this directory are not committed to version control (.gitignore).
+
+Expected model files:
+- ensemble_model.pkl - Main prediction model (XGBoost + LightGBM ensemble)
