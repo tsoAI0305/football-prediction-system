@@ -213,3 +213,4 @@ backend/models/*
 !backend/models/.gitkeep
 *.pkl
 *.joblib
+*.db
