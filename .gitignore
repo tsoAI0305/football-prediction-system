@@ -53,6 +53,7 @@ cover/
 
 # Test database
 test.db
+*.db
 
 # Translations
 *.mo
