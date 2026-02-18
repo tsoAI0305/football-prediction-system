@@ -18,8 +18,6 @@ numpy==1.26.2
 joblib==1.3.2
 
 # LLM
-langchain==0.1.0
-langchain-openai==0.0.2
 openai==1.6.0
 
 # Scraping

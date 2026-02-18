@@ -1,7 +1,6 @@
 """Database connection and session management."""
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import settings
 
 # Create database engine
@@ -15,8 +14,10 @@ engine = create_engine(
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create base class for models
-Base = declarative_base()
+
+# Create base class for models using modern SQLAlchemy 2.0 API
+class Base(DeclarativeBase):
+    pass
 
 
 def get_db():

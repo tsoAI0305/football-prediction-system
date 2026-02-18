@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Enu
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class PredictionResult(str, enum.Enum):
@@ -41,7 +41,7 @@ class Prediction(Base):
     is_correct = Column(Boolean, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     match = relationship("Match", back_populates="predictions")

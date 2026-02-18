@@ -1,5 +1,5 @@
 """Application configuration management."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
@@ -23,10 +23,10 @@ class Settings(BaseSettings):
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     
-    class Config:
-        """Pydantic config."""
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False
+    )
     
     @property
     def cors_origins_list(self) -> List[str]:

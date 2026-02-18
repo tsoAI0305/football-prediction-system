@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Enu
 from sqlalchemy.orm import relationship
 from app.database import Base
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class MatchStatus(str, enum.Enum):
@@ -38,8 +38,8 @@ class Match(Base):
     odds_away = Column(Float)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     home_team = relationship(
