@@ -30,7 +30,9 @@ app.include_router(history_router)
 @app.on_event("startup")
 async def startup_event():
     """Initialize database on startup"""
-    init_db()
+    # Only initialize if not in test environment
+    if os.getenv("TESTING") != "true":
+        init_db()
 
 
 @app.get("/")
@@ -41,6 +43,7 @@ def read_root():
         "version": "1.0.0",
         "description": "AI-powered football match prediction system",
         "endpoints": {
+            "teams": "/teams",
             "matches": "/matches",
             "predictions": "/predictions",
             "history": "/history",
