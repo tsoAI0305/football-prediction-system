@@ -1,37 +1,35 @@
-"""Application configuration management."""
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
-
+"""Application configuration."""
+from pydantic_settings import BaseSettings
+from typing import Optional
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Application settings."""
     
     # Database
-    DATABASE_URL: str = "postgresql://football_user:football_pass@localhost:5432/football_db"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql://football_user:football_pass@db:5432/football_db"
     
-    # LLM
-    LLM_API_KEY: str = ""
-    LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
-    LLM_MODEL: str = "llama-3.1-70b-versatile"
+    # Redis
+    redis_url: str = "redis://redis:6379/0"
     
-    # API
-    DEBUG: bool = True
-    SECRET_KEY: str = "change-this-to-random-secret-key"
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001"
+    # API Keys
+    football_api_key: Optional[str] = None
+    football_api_base_url: str = "https://v3.football.api-sports.io"
+    football_data_token: Optional[str] = None
     
-    # Celery
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    # Security
+    secret_key: str = "your-secret-key-change-in-production"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
     
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=False
-    )
+    # CORS
+    cors_origins: str = ["http://localhost:3000", "http://localhost:8000"]
     
-    @property
-    def cors_origins_list(self) -> List[str]:
-        """Parse CORS origins string to list."""
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
-
+    # Application
+    app_name: str = "Football Prediction API"
+    debug: bool = True
+    
+    class Config:
+        env_file = ".env"
+        extra = "allow"  # ← 重要！允許額外欄位
 
 settings = Settings()

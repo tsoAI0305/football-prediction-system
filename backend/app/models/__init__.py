@@ -1,1 +1,1 @@
-"""Database models package."""
+# Models package

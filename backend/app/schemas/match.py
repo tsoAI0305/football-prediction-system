@@ -1,47 +1,42 @@
-"""Match schemas for API."""
+"""Match schemas."""
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 
 
-class TeamBase(BaseModel):
-    """Base team schema."""
-    id: int
-    name: str
-    league: str
-    current_points: int
-    current_gd: int
-    
-    class Config:
-        from_attributes = True
-
-
 class MatchBase(BaseModel):
     """Base match schema."""
-    id: int
+    home_team: str
+    away_team: str
     league: str
     match_date: datetime
-    status: str
+    status: str = "upcoming"
+
+
+class MatchCreate(MatchBase):
+    """Schema for creating a match."""
     home_score: Optional[int] = None
     away_score: Optional[int] = None
-    odds_home: float
-    odds_draw: float
-    odds_away: float
-    
+    api_fixture_id: Optional[int] = None
+
+
+class MatchUpdate(BaseModel):
+    """Schema for updating a match."""
+    home_score: Optional[int] = None
+    away_score: Optional[int] = None
+    status: Optional[str] = None
+
+
+class MatchResponse(MatchBase):
+    """Schema for match response."""
+    id: int
+    home_score: Optional[int] = None
+    away_score: Optional[int] = None
+    api_fixture_id: Optional[int] = None
+    home_team_id: Optional[int] = None
+    away_team_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
     class Config:
         from_attributes = True
-
-
-class MatchDetail(MatchBase):
-    """Detailed match schema with team information."""
-    home_team: TeamBase
-    away_team: TeamBase
-    
-    class Config:
-        from_attributes = True
-
-
-class MatchListResponse(BaseModel):
-    """Match list response schema."""
-    total: int
-    matches: list

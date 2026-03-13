@@ -1,4 +1,4 @@
-services:
+﻿services:
   db:
     image: postgres:15
     environment:
@@ -10,11 +10,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U football_user"]
+      test: ["CMD-SHELL", "pg_isready -U football_user -d football_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-  
+
   redis:
     image: redis:7-alpine
     ports:
@@ -24,7 +24,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
-  
+
   api:
     build: .
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -42,6 +42,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://football_user:football_pass@db:5432/football_db
       - REDIS_URL=redis://redis:6379/0
+      - GROQ_API_KEY=${GROQ_API_KEY}
 
 volumes:
   postgres_data:

@@ -15,7 +15,7 @@ class CacheService:
         # Try to initialize Redis connection
         try:
             import redis
-            self.client = redis.from_url(settings.REDIS_URL)
+            self.client = redis.from_url(settings.redis_url)
             self.client.ping()
             self.enabled = True
         except Exception as e:

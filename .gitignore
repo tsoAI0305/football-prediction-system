@@ -214,3 +214,25 @@ backend/models/*
 *.pkl
 *.joblib
 *.db
+
+# Node.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+
+# 備份檔案
+*.bak
+*_backup/
+frontend_backup/
+
+# OS
+.DS_Store
+Thumbs.db

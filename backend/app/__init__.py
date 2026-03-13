@@ -1,1 +1,1 @@
-"""Football Prediction System Backend API."""
+# App package

@@ -1,6 +1,5 @@
 """Team model for database."""
 from sqlalchemy import Column, Integer, String, Float
-from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -23,17 +22,9 @@ class Team(Base):
     home_win_rate = Column(Float, default=0.0)
     away_win_rate = Column(Float, default=0.0)
     
-    # Relationships
-    home_matches = relationship(
-        "Match",
-        foreign_keys="Match.home_team_id",
-        back_populates="home_team"
-    )
-    away_matches = relationship(
-        "Match",
-        foreign_keys="Match.away_team_id",
-        back_populates="away_team"
-    )
+    # Relationships 移除，因為 Match 沒有使用 ForeignKey
+    # Match 使用 home_team_id/away_team_id 但沒有設定 ForeignKey
+    # 所以不需要在這裡定義 relationship
     
     def __repr__(self):
         """String representation."""
