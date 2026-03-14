@@ -1,4 +1,11 @@
 ﻿# ⚽ AI 足球預測系統
+![GitHub stars](https://img.shields.io/github/stars/tsoAI0305/football-prediction-system?style=social)
+![GitHub forks](https://img.shields.io/github/forks/tsoAI0305/football-prediction-system?style=social)
+![GitHub issues](https://img.shields.io/github/issues/tsoAI0305/football-prediction-system)
+![GitHub license](https://img.shields.io/github/license/tsoAI0305/football-prediction-system)
+![Python version](https://img.shields.io/badge/python-3.11-blue)
+![Next.js version](https://img.shields.io/badge/next.js-14-black)
+
 > Full-Stack AI Application for Football Match Prediction
 
 結合機器學習與大型語言模型的智能足球比賽預測平台
@@ -100,3 +107,4 @@ Groq - 提供高速 AI 推理
 FastAPI - 現代化 Python Web 框架
 Next.js - React 全棧框架
 ⭐ 如果這個專案對你有幫助，請給個 Star！ 
+
