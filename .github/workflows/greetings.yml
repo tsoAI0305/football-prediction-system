@@ -1,0 +1,35 @@
+﻿name: 🎉 歡迎新貢獻者
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            🎉 感謝你開啟第一個 Issue！
+            
+            我們會盡快回覆你的問題。如果你喜歡這個專案，別忘了給個 ⭐ Star！
+            
+            📚 相關資源：
+            - [README 文檔](https://github.com/tsoAI0305/football-prediction-system#readme)
+            - [貢獻指南](https://github.com/tsoAI0305/football-prediction-system/blob/main/CONTRIBUTING.md)
+          pr-message: |
+            🚀 感謝你的第一個 Pull Request！
+            
+            我們會盡快審核你的貢獻。感謝你讓這個專案變得更好！
+            
+            📋 審核流程：
+            - 檢查程式碼品質
+            - 執行測試
+            - 審核變更內容
