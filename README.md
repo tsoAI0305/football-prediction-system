@@ -25,6 +25,17 @@ AI 足球預測系統是一個全棧 Web 應用，整合了傳統統計模型與
 - ✅ 現代化用戶界面（Next.js 14 + Tailwind CSS + Framer Motion）
 - ✅ Docker 一鍵部署
 
+
+## 📚 文檔資源
+
+| 資源 | 連結 | 說明 |
+|------|------|------|
+| 📖 README | [查看文檔](https://github.com/tsoAI0305/football-prediction-system#readme) | 完整專案說明 |
+| 📊 簡報 PDF | [下載簡報](https://github.com/tsoAI0305/football-prediction-system/blob/main/docs/AI-Football-Prediction-System.pdf) | 專案技術簡報 |
+| 📸 系統截圖 | [查看截圖](https://github.com/tsoAI0305/football-prediction-system/tree/main/docs/screenshots) | 8 張功能展示 |
+| 📚 API 文檔 | [Swagger UI](http://localhost:8000/docs) | 互動式 API 文檔 |
+| 🤝 貢獻指南 | [查看指南](https://github.com/tsoAI0305/football-prediction-system/blob/main/CONTRIBUTING.md) | 如何貢獻程式碼 |
+| 🏷️ 版本發布 | [查看 Releases](https://github.com/tsoAI0305/football-prediction-system/releases) | 版本歷程 |
 ## ✨ 核心功能
 
 ### 🔮 比賽預測
@@ -107,4 +118,5 @@ Groq - 提供高速 AI 推理
 FastAPI - 現代化 Python Web 框架
 Next.js - React 全棧框架
 ⭐ 如果這個專案對你有幫助，請給個 Star！ 
+
 
