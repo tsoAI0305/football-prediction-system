@@ -62,68 +62,127 @@ AI 足球預測系統是一個全棧 Web 應用，整合了傳統統計模型與
 
 ## 🚀 快速開始
 
-### 安裝步驟
+**安裝流程**
 
-1. 克隆倉庫
 ```bash
 git clone https://github.com/tsoAI0305/football-prediction-system.git
 cd football-prediction-system
-設定環境變數
-bash
+
+# 設定環境變數
 echo "GROQ_API_KEY=your_api_key_here" > backend/.env
-啟動服務
-bash
+
+# 啟動後端
 cd backend
 docker compose up -d
-訪問應用
-前端：http://localhost:3000
-後端 API：http://localhost:8000/docs
-📊 預測模型
-評分維度：歷史戰績 (40%)、主客場優勢 (30%)、近期狀態 (20%)、進攻能力 (10%)
 
-AI 分析流程：預測結果 → Groq API → Llama 3.3 70B → 繁體中文分析報告
+# 訪問前端
+# 前端：http://localhost:3000
+# 後端 API：http://localhost:8000/docs
+```
 
-📂 專案結構
-Code
+---
+
+## 🎯 技術亮點
+
+1. **AI 自動分析完整流程**
+   - Groq Llama 3.3 70B API 串接
+   - 原始數據自動轉換 AI 賽評
+2. **模組化架構設計**
+   - 前後端分離，API 可擴展
+   - 多賽事、多模型自動切換
+3. **極速部署**
+   - 完整 Docker 化
+   - 支援本地＆雲端自動啟動
+
+---
+
+## 🏗️ 專案結構
+
+```text
 football-prediction-system/
 ├── backend/
-│   ├── app/              # FastAPI 應用
-│   ├── scripts/          # 預測腳本
-│   └── data/             # 數據檔案
+│   ├── app/                    # FastAPI 應用
+│   ├── scripts/                # 賽事預測腳本
+│   └── data/                   # 來源數據/特徵
 └── frontend/
-    ├── app/              # Next.js 頁面
-    └── components/       # React 元件
-🎯 API 端點
-GET /api/predictions?league=Premier%20League - 獲取預測
-GET /api/teams/Arsenal - 獲取球隊詳情
-完整文檔：http://localhost:8000/docs
-🔮 未來規劃
- 自動更新賽程
- 歷史預測準確率追蹤
- 用戶帳號系統
- 多語言支援
-📈 專案統計
-程式碼：6071 行新增，520 行刪除
-檔案：53 個檔案修改
-比賽預測：47 場（五大聯賽）
-AI 分析覆蓋率：100%
-📄 授權
+    ├── app/                   # Next.js 主要頁面
+    └── components/            # React 組件
+```
+
+---
+
+## 📈 AI 預測說明
+
+- **AI 分析流程：**
+  - 預測輸入 ➔ Groq API ➔ Llama 3.3 70B ➔ 中文自然語言賽評
+- **評分維度&權重：**
+  - 歷史戰績(40%)、主客場優勢(30%)、近期狀態(20%)、進攻能力(10%)
+- **預測結果   **
+  - 勝率百分比、預測比分、信心度、AI 風險提示
+
+---
+
+## 🎨 主要功能
+
+- 47 場五大聯賽比賽自動預測
+- 多維度動態評分 (0-100 分)
+- AI 智能賽評（100% coverage）
+- 球隊搜尋、結果篩選、動態動畫、主客場圖表
+- API 全 Swagger 文件
+
+---
+
+## 🔌 API 端點（範例）
+
+- `GET /api/predictions?league=Premier%20League`  
+  獲取比賽預測結果
+- `GET /api/teams/Arsenal`  
+  獲取指定球隊近期狀態/綜合資訊  
+- 完整說明見 [Swagger UI](http://localhost:8000/docs)
+
+---
+
+## 🔮 未來規劃
+
+- 自動爬蟲/批次更新賽程
+- 歷史預測準確度追蹤 &排名
+- 用戶註冊/收藏對戰
+- 多語言切換
+
+---
+
+## 📊 專案統計
+
+- 📄 6071 行程式碼
+- 🏟️ 47 場比賽 AI 預測
+- 💯 分析覆蓋率 100%
+- 🗂️ 53 個檔案、完整雙端 Docker 工作流
+
+---
+
+## 📜 授權
 MIT License
 
-👨‍💻 作者
-tsoAI0305 - GitHub: @tsoAI0305
+---
 
-🙏 致謝
-Groq - 提供高速 AI 推理
-FastAPI - 現代化 Python Web 框架
-Next.js - React 全棧框架
-⭐ 如果這個專案對你有幫助，請給個 Star！ 
+## 👤 作者
+- tsoAI0305  
+  - GitHub: [@tsoAI0305](https://github.com/tsoAI0305)
+  - Portfolio: [作品集](https://github.com/tsoAI0305/portfolio)
 
+---
 
-
+## 🙏 致謝
+- Groq - AI 引擎
+- FastAPI/Next.js - 官方開源框架
+- 所有社群數據夥伴
 
 ---
 
 ## 🔗 更多專案
 
-查看我的完整作品集：[**tsoAI0305 Portfolio**](https://github.com/tsoAI0305/portfolio)
+查看完整作品集：[**tsoAI0305 Portfolio**](https://github.com/tsoAI0305/portfolio)
+
+---
+
+⭐ 如果這個專案對你有幫助，請給個 Star！
