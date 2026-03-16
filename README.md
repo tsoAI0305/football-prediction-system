@@ -19,6 +19,10 @@
 
 AI 足球預測系統是一個全棧 Web 應用，整合了傳統統計模型與先進的大型語言模型（Groq Llama 3.3 70B），提供五大聯賽比賽的智能預測與深度分析。
 
+## 📺 Project Demo Video
+[![Soccer Prediction System Demo](https://img.youtube.com/vi/797D-fbIe20/0.jpg)](https://youtu.be/797D-fbIe20)
+*Click the thumbnail above to watch the Machine Learning pipeline in action.*
+
 **核心價值：**
 - ✅ 數據驅動的預測模型（基於歷史戰績、主客場優勢、近期狀態）
 - ✅ AI 深度分析（Groq Llama 3.3 70B，100% 覆蓋率）
