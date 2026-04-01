@@ -215,6 +215,11 @@ backend/models/*
 *.joblib
 *.db
 
+# Script output data (CSV / JSON produced by scraper scripts)
+backend/scripts/*_sofascore.csv
+backend/scripts/*_sofascore.json
+backend/scripts/*_alert_report.csv
+
 # Node.js
 node_modules/
 .next/
