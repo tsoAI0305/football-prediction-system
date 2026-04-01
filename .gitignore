@@ -236,3 +236,7 @@ frontend_backup/
 # OS
 .DS_Store
 Thumbs.db
+
+# 只忽略自動產生的資料檔
+backend/scripts/*.csv
+backend/scripts/*.json
