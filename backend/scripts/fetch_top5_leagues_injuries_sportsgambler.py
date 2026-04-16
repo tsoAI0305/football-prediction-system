@@ -25,8 +25,12 @@ def main():
     out_dir = Path(__file__).resolve().parents[1] / "data"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    with open(out_dir / "team_name_map.json", "r", encoding="utf-8") as f:
-        team_name_map = json.load(f)
+    _map_file = out_dir / "team_name_map.json"
+    if _map_file.exists():
+        with open(_map_file, "r", encoding="utf-8") as f:
+            team_name_map = json.load(f)
+    else:
+        team_name_map = {}
 
     def map_team_name(team_name):
         return team_name_map.get(team_name, team_name)

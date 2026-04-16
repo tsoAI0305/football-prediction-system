@@ -209,6 +209,7 @@ __marimo__/
 # Football Prediction System
 backend/data/*
 !backend/data/.gitkeep
+!backend/data/team_name_map.json
 backend/models/*
 !backend/models/.gitkeep
 *.pkl
