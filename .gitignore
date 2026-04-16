@@ -209,11 +209,17 @@ __marimo__/
 # Football Prediction System
 backend/data/*
 !backend/data/.gitkeep
+!backend/data/team_name_map.json
 backend/models/*
 !backend/models/.gitkeep
 *.pkl
 *.joblib
 *.db
+
+# Script output data (CSV / JSON produced by scraper scripts)
+backend/scripts/*_sofascore.csv
+backend/scripts/*_sofascore.json
+backend/scripts/*_alert_report.csv
 
 # Node.js
 node_modules/
