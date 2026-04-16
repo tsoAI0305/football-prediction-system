@@ -16,8 +16,10 @@ def _read_any(path: str) -> pd.DataFrame:
     suf = p.suffix.lower()
     if suf == ".csv":
         return pd.read_csv(p)
-    if suf in {".json", ".ndjson"}:
-        return pd.read_json(p)
+    if suf in {".json", ".ndjson", ".jsonl"}:
+        # ndjson/jsonl are line-delimited JSON
+        lines = suf in {".ndjson", ".jsonl"}
+        return pd.read_json(p, lines=lines)
     raise DataIngestError("Unsupported file type: " + suf)
 
 def load_fixtures(path: str) -> pd.DataFrame:
@@ -44,17 +46,18 @@ def validate_schema(df: pd.DataFrame, schema: Dict[str,str], null_threshold: flo
     for col, t in schema.items():
         if col not in df.columns:
             errors.append(f"missing column: {col}")
-    # simple null checks
-    for col in df.columns:
-        null_rate = df[col].isna().mean()
-        if null_rate > null_threshold:
-            errors.append(f"high null rate {null_rate:.2f} in column {col}")
+        else:
+            null_rate = df[col].isna().mean()
+            if null_rate > null_threshold:
+                errors.append(f"high null rate {null_rate:.2f} in column {col}")
     ok = len(errors) == 0
     return ok, errors
 
 def normalize_team_names(df: pd.DataFrame, mapping: Dict[str,str], team_col: str="team") -> pd.DataFrame:
+    mapping = mapping or {}
     if team_col in df.columns:
         df["team_std"] = df[team_col].astype(str).map(lambda x: mapping.get(x, x))
     else:
-        df["team_std"] = None
+        # create a column of explicit None values matching the index
+        df["team_std"] = pd.Series([None] * len(df), index=df.index)
     return df
