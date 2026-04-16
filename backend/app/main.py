@@ -266,4 +266,4 @@ async def get_team_details(team_name: str):
         "overall_ranking": overall_ranking,
         "total_teams": len(league_teams),
         "upcoming_matches": len(upcoming_matches)
-    }
+    } 

@@ -1,5 +1,6 @@
 from playwright.sync_api import sync_playwright
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Sofascore top5 major leagues資訊
 LEAGUES = [
@@ -53,8 +54,11 @@ def fetch_sofascore_json_api(api_url):
         return data
 
 def save_fixtures_to_csv(league_name, fixtures):
-    import csv, os
-    fname = f"{league_name.replace(' ', '_').lower()}_fixtures_sofascore.csv"
+    import csv
+    # 永遠存到專案 backend/data
+    out_dir = Path(__file__).resolve().parents[1] / "data"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fname = out_dir / f"{league_name.replace(' ', '_').lower()}_fixtures_sofascore.csv"
     with open(fname, 'w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=['round', 'time_utc', 'time_tw', 'home', 'away', 'status'])
         writer.writeheader()

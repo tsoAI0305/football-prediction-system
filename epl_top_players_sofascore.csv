@@ -1,0 +1,41 @@
+rank,stat_type,player_name,player_id,team,team_id,goals,assists,rating
+1,rating,Tom Edozie,1445189,Wolverhampton,3,1,0,7.6
+2,rating,Bruno Fernandes,288205,Manchester United,35,8,16,7.55
+3,rating,Declan Rice,856714,Arsenal,42,4,5,7.49
+4,rating,Bruno Guimarães,866469,Newcastle United,39,9,4,7.49
+5,rating,Rodri,827606,Manchester City,17,1,0,7.45
+6,rating,James Trafford,980643,Manchester City,17,0,0,7.4
+7,rating,Gabriel Magalhães,869792,Arsenal,42,3,4,7.37
+8,rating,Erling Haaland,839956,Manchester City,17,22,7,7.35
+9,rating,Jan Paul van Hecke,962012,Brighton & Hove Albion,30,3,2,7.31
+10,rating,Elliot Anderson,994546,Nottingham Forest,14,2,2,7.29
+11,rating,Marc Guéhi,877994,Manchester City,17,2,2,7.28
+12,rating,James Garner,927361,Everton,48,2,6,7.27
+13,rating,Jérémy Doku,934386,Manchester City,17,1,4,7.27
+14,rating,Virgil van Dijk,151545,Liverpool,44,3,0,7.26
+15,rating,Granit Xhaka,117777,Sunderland,41,1,5,7.24
+16,rating,Moisés Caicedo,987650,Chelsea,38,3,1,7.23
+17,rating,Jack Grealish,189061,Everton,48,2,6,7.23
+18,rating,Bukayo Saka,934235,Arsenal,42,6,3,7.21
+19,rating,Harry Wilson,355528,Fulham,43,10,6,7.21
+20,rating,Rayan Cherki,979128,Manchester City,17,3,8,7.21
+1,goals,Erling Haaland,839956,Manchester City,17,22,7,7.35
+2,goals,Igor Thiago,1016907,Brentford,50,19,1,6.98
+3,goals,Antoine Semenyo,934354,Manchester City,17,15,4,7.07
+4,goals,João Pedro,975079,Chelsea,38,14,5,7.1
+5,goals,Danny Welbeck,33902,Brighton & Hove Albion,30,12,0,6.72
+6,goals,Hugo Ekitiké,1048422,Liverpool,44,11,4,6.92
+7,goals,Viktor Gyökeres,804508,Arsenal,42,11,0,6.57
+8,goals,Harry Wilson,355528,Fulham,43,10,6,7.21
+9,goals,Dominic Calvert-Lewin,372344,Leeds United,34,10,1,6.64
+10,goals,Bruno Guimarães,866469,Newcastle United,39,9,4,7.49
+11,goals,Cole Palmer,982780,Chelsea,38,9,1,7.11
+12,goals,Bryan Mbeumo,927083,Manchester United,35,9,3,6.88
+13,goals,Richarlison,840217,Tottenham Hotspur,33,9,3,6.88
+14,goals,Eli Junior Kroupi,1426228,Bournemouth,60,9,0,6.78
+15,goals,Morgan Gibbs-White,865912,Nottingham Forest,14,9,2,6.75
+16,goals,Ollie Watkins,555386,Aston Villa,40,9,1,6.74
+17,goals,Raúl Jiménez,192442,Fulham,43,9,3,6.73
+18,goals,Benjamin Šeško,986397,Manchester United,35,9,1,6.72
+19,goals,Bruno Fernandes,288205,Manchester United,35,8,16,7.55
+20,goals,Enzo Fernández,974505,Chelsea,38,8,3,7.12
