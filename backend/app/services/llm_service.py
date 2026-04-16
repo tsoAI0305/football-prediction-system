@@ -1,26 +1,27 @@
 """LLM service for match analysis."""
-from typing import Dict
+
+from typing import Dict, List, Optional
 from app.config import settings
 
 
 class LLMService:
     """LLM service for analyzing matches using AI."""
-    
+
     def __init__(self):
         """Initialize LLM service."""
         self.api_key = settings.LLM_API_KEY
         self.base_url = settings.LLM_BASE_URL
         self.model = settings.LLM_MODEL
         self.enabled = bool(self.api_key and self.api_key != "your_groq_api_key_here")
-    
+
     async def analyze_match(self, home_team: str, away_team: str) -> Dict:
         """
         Analyze match using LLM for insights and sentiment.
-        
+
         Args:
             home_team: Home team name
             away_team: Away team name
-            
+
         Returns:
             Dictionary containing:
                 - analysis: LLM-generated analysis text
@@ -28,7 +29,7 @@ class LLMService:
         """
         if not self.enabled:
             return self._get_mock_analysis(home_team, away_team)
-        
+
         try:
             # In production, this would call actual LLM API
             # For now, return mock data
@@ -36,15 +37,15 @@ class LLMService:
         except Exception as e:
             print(f"LLM analysis error: {e}")
             return self._get_mock_analysis(home_team, away_team)
-    
+
     def _get_mock_analysis(self, home_team: str, away_team: str) -> Dict:
         """
         Generate mock LLM analysis.
-        
+
         Args:
             home_team: Home team name
             away_team: Away team name
-            
+
         Returns:
             Mock analysis dictionary
         """
@@ -60,11 +61,41 @@ class LLMService:
 
 建議：關注主隊的進攻效率和客隊的防守表現。
         """.strip()
-        
+
         # Mock sentiment: slightly positive for home team
         sentiment = 0.3
-        
-        return {
-            'analysis': analysis,
-            'sentiment': sentiment
-        }
+
+        return {"analysis": analysis, "sentiment": sentiment}
+
+    # -----------------------------
+    # New: Explain predictions
+    # -----------------------------
+    def explain_predictions(self, predictions: List[Dict], context: Optional[Dict] = None) -> List[str]:
+        """
+        Generate textual explanations for a batch of predictions.
+
+        Args:
+            predictions: list of prediction dicts (each must include 'match_id' and probability fields)
+            context: optional contextual info (e.g., teams mapping, recent form, injuries)
+
+        Returns:
+            List of explanation strings (one per prediction)
+        """
+        explanations = []
+        ctx = context or {}
+        for p in predictions:
+            match_id = p.get("match_id", "<unknown>")
+            ph = p.get("predicted_home_win_prob", 0.0)
+            pd_ = p.get("predicted_draw_prob", 0.0)
+            pa = p.get("predicted_away_win_prob", 0.0)
+            # Simple rule-based rationale for mock explanations
+            top = "主隊" if ph >= pa and ph >= pd_ else ("平局" if pd_ >= ph and pd_ >= pa else "客隊")
+            rationale = f"Match {match_id}: 模型偏向 {top}（home: {ph:.2f}, draw: {pd_:.2f}, away: {pa:.2f}）."
+            # add contextual hints if available
+            if ctx:
+                # e.g., ctx could contain injuries_by_match mapping
+                inj = ctx.get("injuries_by_match", {}).get(match_id)
+                if inj:
+                    rationale += f" 傷病影響: {inj}"
+            explanations.append(rationale)
+        return explanations
