@@ -50,7 +50,11 @@ def create_sample_data():
         
         db.add_all(teams)
         db.commit()
-        print(f"✅ Created {len(teams)} teams")
+        from app.services.logging_config import configure_logging
+        configure_logging()
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"✅ Created {len(teams)} teams")
         
         # Create upcoming matches
         matches = []
