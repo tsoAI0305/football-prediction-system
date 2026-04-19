@@ -5,6 +5,10 @@ from typing import Optional
 import json
 import os
 
+# Central logging configuration
+from app.services.logging_config import configure_logging
+configure_logging()
+
 app = FastAPI(
     title="Football Prediction API",
     version="1.0.0"

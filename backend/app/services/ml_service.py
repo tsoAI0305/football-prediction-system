@@ -3,8 +3,11 @@
 import joblib
 import numpy as np
 import pandas as pd
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class MLService:
@@ -27,7 +30,7 @@ class MLService:
             try:
                 return joblib.load(model_path)
             except Exception as e:
-                print(f"[MLService] Error loading model: {e}")
+                logger.exception(f"[MLService] Error loading model: {e}")
                 return None
         return None
 
@@ -54,7 +57,7 @@ class MLService:
             try:
                 probs = self.model.predict_proba([features])[0]
             except Exception as e:
-                print(f"[MLService] Model predict_proba failed: {e} - falling back to odds")
+                logger.error(f"[MLService] Model predict_proba failed: {e} - falling back to odds")
                 probs = self._odds_to_probs(
                     match.odds_home,
                     match.odds_draw,
@@ -243,14 +246,14 @@ class MLService:
                     numeric = features_df[["odds_home", "odds_draw", "odds_away"]].astype(float).fillna(0.0)
                 X = numeric.fillna(0.0).values
             except Exception as e:
-                print(f"[MLService] Failed to construct numeric feature matrix from DataFrame: {e}")
+                logger.error(f"[MLService] Failed to construct numeric feature matrix from DataFrame: {e}")
                 X = None
 
             if X is not None and hasattr(self.model, "predict_proba"):
                 try:
                     probs = self.model.predict_proba(X)
                 except Exception as e:
-                    print(f"[MLService] model.predict_proba failed for DataFrame: {e}")
+                    logger.exception(f"[MLService] model.predict_proba failed for DataFrame: {e}")
                     probs = None
             else:
                 probs = None

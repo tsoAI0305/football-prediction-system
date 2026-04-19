@@ -1,7 +1,10 @@
 """Redis cache utilities."""
 import json
 from typing import Optional, Any
+import logging
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class CacheService:
@@ -19,7 +22,7 @@ class CacheService:
             self.client.ping()
             self.enabled = True
         except Exception as e:
-            print(f"Redis not available: {e}")
+            logger.exception(f"Redis not available: {e}")
             self.enabled = False
     
     def get(self, key: str) -> Optional[Any]:

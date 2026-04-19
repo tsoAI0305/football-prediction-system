@@ -1,7 +1,10 @@
 """LLM service for match analysis."""
 
 from typing import Dict, List, Optional
+import logging
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class LLMService:
@@ -35,7 +38,7 @@ class LLMService:
             # For now, return mock data
             return self._get_mock_analysis(home_team, away_team)
         except Exception as e:
-            print(f"LLM analysis error: {e}")
+            logger.exception(f"LLM analysis error: {e}")
             return self._get_mock_analysis(home_team, away_team)
 
     def _get_mock_analysis(self, home_team: str, away_team: str) -> Dict:
