@@ -15,7 +15,13 @@ class Settings(BaseSettings):
     football_api_key: Optional[str] = None
     football_api_base_url: str = "https://v3.football.api-sports.io"
     football_data_token: Optional[str] = None
-    
+
+    # LLM / Groq settings (optional)
+    LLM_API_KEY: Optional[str] = None
+    LLM_BASE_URL: str = ""
+    LLM_MODEL: str = "mock-llm"
+    groq_api_key: Optional[str] = None
+
     # Security
     secret_key: str = "your-secret-key-change-in-production"
     algorithm: str = "HS256"

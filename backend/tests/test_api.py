@@ -58,8 +58,9 @@ def test_get_matches_empty():
     response = client.get("/api/matches/")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 0
-    assert data["matches"] == []
+    # API returns a list of matches
+    assert isinstance(data, list)
+    assert data == []
 
 
 def test_get_matches_with_data():
@@ -96,7 +97,7 @@ def test_get_matches_with_data():
     match = Match(
         league="ENG_PL",
         match_date=datetime.now(timezone.utc) + timedelta(days=1),
-        status=MatchStatus.SCHEDULED,
+        status=MatchStatus.SCHEDULED.value,
         home_team_id=team1.id,
         away_team_id=team2.id,
         odds_home=2.5,
@@ -111,9 +112,9 @@ def test_get_matches_with_data():
     response = client.get("/api/matches/")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert len(data["matches"]) == 1
-    assert data["matches"][0]["league"] == "ENG_PL"
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["league"] == "ENG_PL"
 
 
 def test_get_match_detail():
@@ -130,7 +131,7 @@ def test_get_match_detail():
     match = Match(
         league="ENG_PL",
         match_date=datetime.now(timezone.utc),
-        status=MatchStatus.SCHEDULED,
+        status=MatchStatus.SCHEDULED.value,
         home_team_id=team1.id,
         away_team_id=team2.id,
         odds_home=2.0,
@@ -146,7 +147,7 @@ def test_get_match_detail():
     response = client.get(f"/api/matches/{match_id}")
     assert response.status_code == 200
     data = response.json()
-    assert "match" in data
+    # single match response should include team names
     assert "home_team" in data
     assert "away_team" in data
 
@@ -171,7 +172,7 @@ def test_create_prediction():
     match = Match(
         league="GER_B1",
         match_date=datetime.now(timezone.utc) + timedelta(days=2),
-        status=MatchStatus.SCHEDULED,
+        status=MatchStatus.SCHEDULED.value,
         home_team_id=team1.id,
         away_team_id=team2.id,
         odds_home=1.8,
@@ -227,7 +228,7 @@ def test_get_history_with_predictions():
     match = Match(
         league="ESP_L1",
         match_date=datetime.now(timezone.utc) - timedelta(days=1),
-        status=MatchStatus.FINISHED,
+        status=MatchStatus.FINISHED.value,
         home_team_id=team1.id,
         away_team_id=team2.id,
         home_score=2,
@@ -300,5 +301,6 @@ def test_matches_filter_by_league():
     response = client.get("/api/matches/?league=ENG_PL")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["matches"][0]["league"] == "ENG_PL"
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["league"] == "ENG_PL"
