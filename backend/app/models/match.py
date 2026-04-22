@@ -1,7 +1,19 @@
 """Match model for database."""
-from sqlalchemy import Column, Integer, String, DateTime, Float
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, event
+from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime, timezone
+import enum
+
+
+class MatchStatus(enum.Enum):
+    """Match status enumeration."""
+    SCHEDULED = "SCHEDULED"
+    FINISHED = "FINISHED"
+    CANCELED = "CANCELED"
+
+
+# add foreign keys to reference teams so we can relate and populate names
 
 
 class Match(Base):
@@ -90,3 +102,23 @@ class Match(Base):
             return 'A'
         else:
             return 'D'
+
+
+# Populate home_team/away_team names from team ids before insert/update
+def _populate_team_names(mapper, connection, target):
+    try:
+        if (not target.home_team) and target.home_team_id:
+            row = connection.execute("SELECT name FROM teams WHERE id = :id", {"id": target.home_team_id}).fetchone()
+            if row:
+                target.home_team = row[0]
+        if (not target.away_team) and target.away_team_id:
+            row = connection.execute("SELECT name FROM teams WHERE id = :id", {"id": target.away_team_id}).fetchone()
+            if row:
+                target.away_team = row[0]
+    except Exception:
+        # don't raise during DB events; leave names as-is
+        pass
+
+
+event.listen(Match, 'before_insert', _populate_team_names)
+event.listen(Match, 'before_update', _populate_team_names)

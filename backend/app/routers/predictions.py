@@ -7,7 +7,7 @@ from app.services.llm_service import LLMService
 from app.models.match import Match
 from app.models.prediction import Prediction, PredictionResult
 
-router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
+router = APIRouter(tags=["Predictions"])
 
 
 @router.get("/{match_id}")
@@ -70,9 +70,10 @@ async def get_prediction(match_id: int, db: Session = Depends(get_db)):
     
     # LLM analysis
     if match.home_team and match.away_team:
+        # match.home_team/away_team are stored as plain strings
         llm_analysis = await llm_service.analyze_match(
-            match.home_team.name,
-            match.away_team.name
+            match.home_team,
+            match.away_team
         )
     else:
         llm_analysis = {"analysis": "球隊資訊不完整", "sentiment": 0.0}

@@ -64,7 +64,7 @@ def create_sample_data():
         matches.append(Match(
             league="ENG_PL",
             match_date=now + timedelta(days=1, hours=15),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[0].id,  # Man Utd
             away_team_id=teams[1].id,  # Liverpool
             odds_home=2.5,
@@ -75,7 +75,7 @@ def create_sample_data():
         matches.append(Match(
             league="ENG_PL",
             match_date=now + timedelta(days=2, hours=12),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[2].id,  # Arsenal
             away_team_id=teams[3].id,  # Chelsea
             odds_home=2.0,
@@ -86,7 +86,7 @@ def create_sample_data():
         matches.append(Match(
             league="ENG_PL",
             match_date=now + timedelta(days=2, hours=17),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[4].id,  # Man City
             away_team_id=teams[0].id,  # Man Utd
             odds_home=1.6,
@@ -98,7 +98,7 @@ def create_sample_data():
         matches.append(Match(
             league="GER_B1",
             match_date=now + timedelta(days=3, hours=18),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[5].id,  # Bayern
             away_team_id=teams[6].id,  # Dortmund
             odds_home=1.8,
@@ -109,7 +109,7 @@ def create_sample_data():
         matches.append(Match(
             league="GER_B1",
             match_date=now + timedelta(days=3, hours=15),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[7].id,  # Leipzig
             away_team_id=teams[5].id,  # Bayern
             odds_home=4.5,
@@ -121,7 +121,7 @@ def create_sample_data():
         matches.append(Match(
             league="ESP_L1",
             match_date=now + timedelta(days=4, hours=20),
-            status=MatchStatus.SCHEDULED,
+            status=MatchStatus.SCHEDULED.value,
             home_team_id=teams[8].id,  # Real Madrid
             away_team_id=teams[9].id,  # Barcelona
             odds_home=2.2,
@@ -133,7 +133,7 @@ def create_sample_data():
         finished_match = Match(
             league="ENG_PL",
             match_date=now - timedelta(days=2),
-            status=MatchStatus.FINISHED,
+            status=MatchStatus.FINISHED.value,
             home_team_id=teams[1].id,  # Liverpool
             away_team_id=teams[3].id,  # Chelsea
             home_score=3,
@@ -169,7 +169,7 @@ def create_sample_data():
         
         print("\n🎉 Sample data created successfully!")
         print(f"   - {len(teams)} teams")
-        print(f"   - {len(matches)} matches (including {sum(1 for m in matches if m.status == MatchStatus.FINISHED)} finished)")
+        print(f"   - {len(matches)} matches (including {sum(1 for m in matches if m.status == MatchStatus.FINISHED.value)} finished)")
         print(f"   - 1 prediction")
         
     except Exception as e:

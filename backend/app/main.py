@@ -1,9 +1,13 @@
 ﻿"""FastAPI main application."""
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import json
 import os
+from sqlalchemy.orm import Session
+from app.routers import matches, predictions, health
+from app.database import get_db
+from app.models.prediction import Prediction
 
 # Central logging configuration
 from app.services.logging_config import configure_logging
@@ -13,6 +17,11 @@ app = FastAPI(
     title="Football Prediction API",
     version="1.0.0"
 )
+
+
+app.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
+app.include_router(predictions.router, prefix="/api/predictions", tags=["Predictions"])
+app.include_router(health.router, prefix="/api/health", tags=["Health"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,40 +109,67 @@ async def get_teams(league: Optional[str] = None):
 @app.get("/api/history/")
 async def get_history(
     limit: int = Query(30, le=100),
-    only_completed: bool = Query(False)
+    only_completed: bool = Query(False),
+    db: Session = Depends(get_db)
 ):
-    """取得預測歷史記錄"""
+    """取得預測歷史記錄。優先讀取 data/final_predictions.json，若不存在則從 DB 查詢 Prediction。"""
     predictions_file = "data/final_predictions.json"
-    
-    if not os.path.exists(predictions_file):
-        raise HTTPException(status_code=404, detail="尚無預測記錄")
-    
-    with open(predictions_file, "r", encoding="utf-8") as f:
-        predictions = json.load(f)
-    
     history_records = []
-    for idx, pred in enumerate(predictions[:limit], 1):
-        record = {
-            "id": idx,
-            "date": pred["date"],
-            "time": pred["time"],
-            "league": pred["league"],
-            "home_team": pred["home_team"],
-            "away_team": pred["away_team"],
-            "predicted_result": pred["prediction"]["prediction"],
-            "predicted_score": pred["prediction"]["expected_score"],
-            "confidence": pred["prediction"]["confidence"],
-            "actual_result": None,
-            "actual_score": None,
-            "is_correct": None
-        }
-        history_records.append(record)
-    
+
+    if os.path.exists(predictions_file):
+        with open(predictions_file, "r", encoding="utf-8") as f:
+            predictions = json.load(f)
+        for idx, pred in enumerate(predictions[:limit], 1):
+            record = {
+                "id": idx,
+                "date": pred.get("date"),
+                "time": pred.get("time"),
+                "league": pred.get("league"),
+                "home_team": pred.get("home_team"),
+                "away_team": pred.get("away_team"),
+                "predicted_result": pred.get("prediction", {}).get("prediction"),
+                "predicted_score": pred.get("prediction", {}).get("expected_score"),
+                "confidence": pred.get("prediction", {}).get("confidence"),
+                "actual_result": None,
+                "actual_score": None,
+                "is_correct": None
+            }
+            history_records.append(record)
+    else:
+        # Read from DB
+        preds = db.query(Prediction).order_by(Prediction.created_at.desc()).limit(limit).all()
+        for idx, p in enumerate(preds, 1):
+            # find match to get teams
+            match = db.query(__import__('app.models.match', fromlist=['Match']).Match).filter(__import__('app.models.match', fromlist=['Match']).Match.id == p.match_id).first()
+            home = match.home_team if match and match.home_team else None
+            away = match.away_team if match and match.away_team else None
+            record = {
+                "id": idx,
+                "date": getattr(p, 'created_at', None),
+                "time": None,
+                "league": getattr(match, 'league', None),
+                "home_team": home,
+                "away_team": away,
+                "predicted_result": getattr(p.predicted_result, 'value', None),
+                "predicted_score": None,
+                "confidence": p.confidence_home if p else None,
+                "actual_result": getattr(p.actual_result, 'value', None) if p.actual_result else None,
+                "actual_score": None,
+                "is_correct": p.is_correct
+            }
+            history_records.append(record)
+
     if only_completed:
         history_records = [r for r in history_records if r["actual_result"] is not None]
-    
+
+    total = len(history_records)
+    correct = sum(1 for r in history_records if r.get("is_correct"))
+    accuracy = (100.0 * correct / total) if total > 0 else 0
+
     return {
-        "total": len(history_records),
+        "total": total,
+        "correct": correct,
+        "accuracy": accuracy,
         "records": history_records
     }
 
