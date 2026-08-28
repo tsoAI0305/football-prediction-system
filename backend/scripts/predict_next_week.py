@@ -1,197 +1,167 @@
-﻿"""Predict all matches in next week."""
-import sys
-import os
+﻿"""
+scripts/predict_next_week.py
+
+從 DB 取未來 14 天賽程 → feature_engineer → ml_service
+→ 輸出 data/final_predictions.json（供 /api/predictions/ 讀取）
+"""
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-from scripts.predict_match import predict_match
+import joblib
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+from pathlib import Path
+from app.database import SessionLocal
+from app.models.match import Match
+from app.services.feature_engineer import build_feature_matrix
+from app.services.ml_service import MLService
 
-# 手動輸入未來賽程（使用正確的球隊名稱）
-NEXT_WEEK_FIXTURES = [
-    # Premier League
-    {
-        'date': '2026-03-14',
-        'league': 'Premier League',
-        'home_team': 'Manchester City',
-        'away_team': 'Liverpool',
-    },
-    {
-        'date': '2026-03-14',
-        'league': 'Premier League',
-        'home_team': 'Arsenal',
-        'away_team': 'Chelsea',
-    },
-    {
-        'date': '2026-03-14',
-        'league': 'Premier League',
-        'home_team': 'Manchester United',
-        'away_team': 'Tottenham',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'Premier League',
-        'home_team': 'Newcastle',
-        'away_team': 'Aston Villa',
-    },
-    
-    # La Liga
-    {
-        'date': '2026-03-15',
-        'league': 'La Liga',
-        'home_team': 'Barcelona',
-        'away_team': 'Real Madrid',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'La Liga',
-        'home_team': 'Atletico Madrid',
-        'away_team': 'Sevilla',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'La Liga',
-        'home_team': 'Valencia',
-        'away_team': 'Villarreal',
-    },
-    
-    # Bundesliga
-    {
-        'date': '2026-03-15',
-        'league': 'Bundesliga',
-        'home_team': 'Bayern Munich',
-        'away_team': 'Dortmund',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'Bundesliga',
-        'home_team': 'RB Leipzig',
-        'away_team': 'Leverkusen',
-    },
-    
-    # Serie A
-    {
-        'date': '2026-03-15',
-        'league': 'Serie A',
-        'home_team': 'Inter',
-        'away_team': 'AC Milan',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'Serie A',
-        'home_team': 'Juventus',
-        'away_team': 'Napoli',
-    },
-    {
-        'date': '2026-03-15',
-        'league': 'Serie A',
-        'home_team': 'Roma',
-        'away_team': 'Lazio',
-    },
-    
-    # Ligue 1
-    {
-        'date': '2026-03-16',
-        'league': 'Ligue 1',
-        'home_team': 'Paris Saint Germain',  # 使用完整名稱
-        'away_team': 'Marseille',
-    },
-    {
-        'date': '2026-03-16',
-        'league': 'Ligue 1',
-        'home_team': 'Lyon',
-        'away_team': 'Monaco',
-    },
-    {
-        'date': '2026-03-16',
-        'league': 'Ligue 1',
-        'home_team': 'Lille',
-        'away_team': 'Lens',
-    },
-]
 
-def predict_next_week():
-    """預測下週所有比賽."""
-    
-    print("🚀 預測未來一週賽事")
-    print("="*70)
-    print(f"總共 {len(NEXT_WEEK_FIXTURES)} 場比賽\n")
-    
-    predictions = []
-    success = 0
-    failed = 0
-    failed_matches = []
-    
-    for fixture in NEXT_WEEK_FIXTURES:
-        print(f"\n📅 {fixture['date']} | {fixture['league']}")
-        print(f"⚽ {fixture['home_team']} vs {fixture['away_team']}")
-        print("-"*70)
-        
-        result = predict_match(fixture['home_team'], fixture['away_team'])
-        
-        if 'error' in result:
-            print(f"   ❌ {result['error']}")
-            failed += 1
-            failed_matches.append(f"{fixture['home_team']} vs {fixture['away_team']}")
+def add_diff_features(df: pd.DataFrame) -> pd.DataFrame:
+    if "home_rank" in df.columns and "away_rank" in df.columns:
+        df["rank_diff"]   = df["home_rank"]      - df["away_rank"]
+        df["points_diff"] = df["home_points"]    - df["away_points"]
+        df["gd_diff"]     = df["home_goal_diff"] - df["away_goal_diff"]
+    return df
+
+
+def betting_advice(pred: str, conf: float,
+                   ph: float, pd_: float, pa: float,
+                   over_p: float) -> str:
+    """產生投注建議文字"""
+    result_map = {"H": "主勝", "D": "平局", "A": "客勝"}
+    ou_str = f"大球({over_p:.0%})" if over_p >= 0.5 else f"小球({1-over_p:.0%})"
+
+    if conf >= 0.70:
+        return f"強烈推薦：{result_map[pred]}（{conf:.0%}）+ {ou_str}"
+    elif conf >= 0.55:
+        return f"建議：{result_map[pred]}（{conf:.0%}）+ {ou_str}"
+    else:
+        return f"參考：{result_map[pred]}（{conf:.0%}），{ou_str}，建議觀望"
+
+
+def main():
+    days_ahead = int(os.environ.get("PREDICT_DAYS", 14))
+    now = datetime.utcnow()
+    cutoff = now + timedelta(days=days_ahead)
+
+    print(f"🔮 預測未來 {days_ahead} 天比賽（至 {cutoff.date()}）")
+
+    db = SessionLocal()
+    try:
+        upcoming = (
+            db.query(Match)
+            .filter(
+                Match.status == "SCHEDULED",
+                Match.match_date >= now,
+                Match.match_date <= cutoff,
+            )
+            .order_by(Match.match_date)
+            .all()
+        )
+        print(f"📅 找到 {len(upcoming)} 場未來賽程")
+
+        if not upcoming:
+            print("❌ 沒有未來賽程，請確認 DB 已 ingest 賽程"); return
+
+        # ── Feature matrix ─────────────────────────────────────────────
+        up_df = pd.DataFrame([{
+            "match_id":   m.id,
+            "home_team":  m.home_team,
+            "away_team":  m.away_team,
+            "league":     m.league,
+            "match_date": m.match_date,
+        } for m in upcoming])
+
+        feat_df = add_diff_features(build_feature_matrix(up_df, db=db))
+
+        # ── 勝平負預測 ──────────────────────────────────────────────────
+        svc = MLService()
+        if svc.model is None:
+            print("⚠️  models/ensemble_model.pkl 不存在，請先跑 train_model.py")
+            return
+        result_preds = svc.predict_from_dataframe(feat_df)
+
+        # ── 大小球預測 ──────────────────────────────────────────────────
+        ou_path = Path("models/ou_model.pkl")
+        if ou_path.exists():
+            ou_pay  = joblib.load(ou_path)
+            ou_mod  = ou_pay["model"]
+            avail   = [c for c in ou_pay["feature_cols"] if c in feat_df.columns]
+            ou_probs = ou_mod.predict_proba(feat_df[avail].fillna(0).values)
         else:
-            # 預測結果
-            pred_map = {
-                'home_win': f"✅ {fixture['home_team']} 獲勝",
-                'away_win': f"✅ {fixture['away_team']} 獲勝",
-                'draw': '🤝 平局'
-            }
-            print(f"   🎯 預測: {pred_map[result['prediction']]} (信心度: {result['confidence']}%)")
-            print(f"   📊 機率: 主 {result['probabilities']['home_win']}% | "
-                  f"和 {result['probabilities']['draw']}% | "
-                  f"客 {result['probabilities']['away_win']}%")
-            print(f"   ⚽ 預測比分: {result['expected_score']}")
-            print(f"   📈 {fixture['home_team']}: {result['analysis']['home_form']} "
-                  f"(主場勝率 {result['analysis']['home_win_rate']}%)")
-            print(f"   📈 {fixture['away_team']}: {result['analysis']['away_form']} "
-                  f"(客場勝率 {result['analysis']['away_win_rate']}%)")
-            
-            predictions.append({
-                'date': fixture['date'],
-                'league': fixture['league'],
-                'home_team': fixture['home_team'],
-                'away_team': fixture['away_team'],
-                'prediction': result,
+            print("⚠️  ou_model.pkl 不存在，大小球以 50% 填充")
+            ou_probs = np.full((len(feat_df), 2), 0.5)
+
+        # ── 組合輸出 ────────────────────────────────────────────────────
+        match_map = {m.id: m for m in upcoming}
+        output = []
+
+        for i, (_, row) in enumerate(result_preds.iterrows()):
+            mid   = int(row["match_id"])
+            m     = match_map.get(mid)
+            if not m: continue
+
+            ph    = round(float(row["predicted_home_win_prob"]), 3)
+            pd_   = round(float(row["predicted_draw_prob"]),     3)
+            pa    = round(float(row["predicted_away_win_prob"]), 3)
+            pred  = str(row["prediction"])
+            conf  = round(float(row["confidence"]), 3)
+            over_p = round(float(ou_probs[i][1]), 3)
+
+            output.append({
+                "match_id":   mid,
+                "league":     m.league,
+                "date":       m.match_date.strftime("%Y-%m-%d"),
+                "time":       m.match_date.strftime("%H:%M"),
+                "home_team":  m.home_team,
+                "away_team":  m.away_team,
+                "prediction": {
+                    # 勝平負
+                    "prediction":   pred,          # H / D / A
+                    "confidence":   conf,
+                    "home_win_prob": ph,
+                    "draw_prob":    pd_,
+                    "away_win_prob": pa,
+                    # 大小球
+                    "over25_prob":  over_p,
+                    "under25_prob": round(1 - over_p, 3),
+                    "ou_pick":      "OVER" if over_p >= 0.5 else "UNDER",
+                    # 投注建議
+                    "betting_advice": betting_advice(pred, conf, ph, pd_, pa, over_p),
+                },
+                "generated_at": datetime.utcnow().isoformat(),
             })
-            success += 1
-    
-    # 儲存結果
-    os.makedirs('data', exist_ok=True)
-    with open('data/predictions.json', 'w', encoding='utf-8') as f:
-        json.dump(predictions, f, ensure_ascii=False, indent=2)
-    
-    print("\n" + "="*70)
-    print(f"📊 預測統計")
-    print("="*70)
-    print(f"✅ 成功預測: {success} 場")
-    print(f"❌ 失敗: {failed} 場")
-    
-    if failed_matches:
-        print(f"\n⚠️ 無法預測的比賽（找不到球隊資料）:")
-        for match in failed_matches:
-            print(f"   - {match}")
-    
-    print(f"\n📁 預測結果已儲存到 data/predictions.json")
-    print("="*70)
-    
-    # 按聯賽統計
-    by_league = {}
-    for p in predictions:
-        league = p['league']
-        if league not in by_league:
-            by_league[league] = {'home_win': 0, 'draw': 0, 'away_win': 0}
-        by_league[league][p['prediction']['prediction']] += 1
-    
-    print("\n📊 各聯賽預測分布:")
-    for league, stats in sorted(by_league.items()):
-        total = sum(stats.values())
-        print(f"\n{league} ({total} 場):")
-        print(f"   主勝: {stats['home_win']} | 和局: {stats['draw']} | 客勝: {stats['away_win']}")
-    
-    return predictions
+
+        # ── 寫入 JSON ───────────────────────────────────────────────────
+        out_path = Path("data/final_predictions.json")
+        out_path.parent.mkdir(exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+
+        print(f"\n✅ 已輸出 {len(output)} 場預測 → {out_path}")
+
+        # 摘要
+        from collections import Counter
+        pred_dist = Counter(o["prediction"]["prediction"] for o in output)
+        ou_dist   = Counter(o["prediction"]["ou_pick"] for o in output)
+        print(f"   勝平負分佈：H={pred_dist['H']}  D={pred_dist['D']}  A={pred_dist['A']}")
+        print(f"   大小球分佈：OVER={ou_dist['OVER']}  UNDER={ou_dist['UNDER']}")
+
+        # 印前5筆
+        print("\n📋 前5場預測：")
+        for o in output[:5]:
+            p = o["prediction"]
+            print(f"  [{o['league']}] {o['date']} {o['time']}  "
+                  f"{o['home_team']} vs {o['away_team']}")
+            print(f"    → {p['prediction']}({p['confidence']:.0%})  "
+                  f"{p['ou_pick']}({p['over25_prob']:.0%})  {p['betting_advice']}")
+
+    finally:
+        db.close()
+
 
 if __name__ == "__main__":
-    predict_next_week()
+    main()

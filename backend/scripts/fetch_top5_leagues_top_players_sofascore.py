@@ -1,6 +1,7 @@
 # coding=utf8
 import csv
 import json
+import random
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 import time
@@ -11,6 +12,8 @@ HEADERS = {
 }
 
 TOP_N_PER_TEAM = 3
+MAX_RETRIES = 3
+REQUEST_TIMEOUT_MS = 60000  # raised from 30000
 
 STAT_CONFIGS = [
     {"label": "rating", "order": "-rating"},
@@ -51,21 +54,35 @@ LEAGUES = [
     }
 ]
 
+
 def api_get(url):
-    with sync_playwright() as p:
-        ctx = p.request.new_context(extra_http_headers=HEADERS)
+    """Fetch URL via Playwright with retry + exponential backoff."""
+    last_exc = None
+    for attempt in range(MAX_RETRIES):
         try:
-            r = ctx.get(url, timeout=30000)
-            if r.status != 200:
-                raise RuntimeError(f"HTTP {r.status}: {url}")
-            return r.json()
-        finally:
-            ctx.dispose()
+            with sync_playwright() as p:
+                ctx = p.request.new_context(extra_http_headers=HEADERS)
+                try:
+                    r = ctx.get(url, timeout=REQUEST_TIMEOUT_MS)
+                    if r.status != 200:
+                        raise RuntimeError(f"HTTP {r.status}: {url}")
+                    return r.json()
+                finally:
+                    ctx.dispose()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES - 1:
+                wait = 2 ** (attempt + 1)  # 2s, 4s
+                print(f"  [retry {attempt + 1}/{MAX_RETRIES - 1}] {type(exc).__name__}: waiting {wait}s…")
+                time.sleep(wait)
+    raise last_exc
+
 
 def fetch_teams(tournament_id, season_id):
     url = f"https://api.sofascore.com/api/v1/unique-tournament/{tournament_id}/season/{season_id}/teams"
     data = api_get(url)
     return [{"id": t["id"], "name": t["name"]} for t in data.get("teams", [])]
+
 
 def fetch_team_players(team_id):
     url = f"https://api.sofascore.com/api/v1/team/{team_id}/players"
@@ -73,9 +90,19 @@ def fetch_team_players(team_id):
     players = []
     for it in data.get("players", []):
         p = it.get("player", {}) or {}
-        if p.get("id"):
-            players.append({"player_id": str(p["id"]), "player_name": p.get("name", "")})
+        if not p.get("id"):
+            continue
+        pos_cat = (p.get("positionCategory") or p.get("position", {}) or {})
+        if isinstance(pos_cat, dict):
+            pos_cat = pos_cat.get("abbrevation", "") or pos_cat.get("name", "")
+        position = str(pos_cat or "").upper().strip()[:2]
+        players.append({
+            "player_id":   str(p["id"]),
+            "player_name": p.get("name", ""),
+            "position":    position,
+        })
     return players
+
 
 def fetch_league_stats(tournament_id, season_id, order, limit=500):
     url = (
@@ -84,6 +111,7 @@ def fetch_league_stats(tournament_id, season_id, order, limit=500):
     )
     data = api_get(url)
     return data.get("results", [])
+
 
 def build_stats_lookup(tournament_id, season_id):
     lookup = {}
@@ -106,9 +134,11 @@ def build_stats_lookup(tournament_id, season_id):
             }
     return lookup
 
+
 def top_n(rows, key, n=3):
     rows = sorted(rows, key=lambda x: float(x.get(key, 0) or 0), reverse=True)
     return rows[:n]
+
 
 def format_row(row):
     _row = dict(row)
@@ -117,6 +147,7 @@ def format_row(row):
     except Exception:
         pass
     return _row
+
 
 def load_cache(cache_file):
     if cache_file.exists():
@@ -127,12 +158,13 @@ def load_cache(cache_file):
             return {}
     return {}
 
+
 def save_cache(cache, cache_file):
     with open(cache_file, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
 
+
 def fetch_player_overall_stats(player_id, tournament_id, season_id, player_cache, cache_file):
-    # 取用快取
     if player_id in player_cache:
         return player_cache[player_id]
     url = (
@@ -155,11 +187,41 @@ def fetch_player_overall_stats(player_id, tournament_id, season_id, player_cache
         save_cache(player_cache, cache_file)
     return stats
 
+
+# ── Checkpoint helpers ────────────────────────────────────────────────────────
+
+def _ckpt_path(out_dir, league_name):
+    return out_dir / f"_checkpoint_{league_name.lower().replace(' ', '_')}.json"
+
+
+def load_checkpoint(ckpt_file):
+    if ckpt_file.exists():
+        try:
+            with open(ckpt_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"done_team_ids": [], "rows": []}
+
+
+def save_checkpoint(ckpt, ckpt_file):
+    with open(ckpt_file, "w", encoding="utf-8") as f:
+        json.dump(ckpt, f, ensure_ascii=False, indent=2)
+
+
+def clear_checkpoint(ckpt_file):
+    if ckpt_file.exists():
+        ckpt_file.unlink()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 def fetch_and_write_league_top_players(league):
     out_dir = Path(__file__).resolve().parents[1] / "data"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_csv = out_dir / league["filename"]
     cache_file = out_dir / f"player_cache_{league['name'].lower()}.json"
+    ckpt_file = _ckpt_path(out_dir, league["name"])
     tournament_id = league["tournament_id"]
     season_id = league["season_id"]
 
@@ -171,14 +233,29 @@ def fetch_and_write_league_top_players(league):
     print("Building league stats lookup...")
     stats_lookup = build_stats_lookup(tournament_id, season_id)
 
-    # 加入 cache
     player_cache = load_cache(cache_file)
+    ckpt = load_checkpoint(ckpt_file)
+    done_ids = set(str(tid) for tid in ckpt["done_team_ids"])
+    all_rows = list(ckpt["rows"])
 
-    all_rows = []
+    if done_ids:
+        print(f"  Resuming: {len(done_ids)} teams already done, {len(teams) - len(done_ids)} remaining")
+
     for team in teams:
         tid = str(team["id"])
         tname = team["name"]
-        squad = fetch_team_players(team["id"])
+
+        if tid in done_ids:
+            continue
+
+        # Random delay between teams to avoid rate limiting
+        time.sleep(random.uniform(0.5, 1.5))
+
+        try:
+            squad = fetch_team_players(team["id"])
+        except Exception as exc:
+            print(f"  WARN: failed to fetch squad for {tname} — {exc}")
+            continue
 
         enriched = []
         for sp in squad:
@@ -197,40 +274,54 @@ def fetch_and_write_league_top_players(league):
                 print(f"fetch {pid} {sp['player_name']}: {goals} {assists} {rating}")
             enriched.append(
                 {
-                    "team": tname,
-                    "team_id": tid,
+                    "team":        tname,
+                    "team_id":     tid,
                     "player_name": sp["player_name"],
-                    "player_id": pid,
-                    "goals": goals,
-                    "assists": assists,
-                    "rating": rating,
+                    "player_id":   pid,
+                    "position":    sp.get("position", ""),
+                    "goals":       goals,
+                    "assists":     assists,
+                    "rating":      rating,
                 }
             )
+
         for stat_type, key in [("rating", "rating"), ("goals", "goals"), ("assists", "assists")]:
             tops = top_n(enriched, key, TOP_N_PER_TEAM)
             for i, r in enumerate(tops, start=1):
                 all_rows.append(
                     {
-                        "team": r["team"],
-                        "team_id": r["team_id"],
-                        "stat_type": stat_type,
-                        "rank": i,
+                        "team":        r["team"],
+                        "team_id":     r["team_id"],
+                        "stat_type":   stat_type,
+                        "rank":        i,
                         "player_name": r["player_name"],
-                        "player_id": r["player_id"],
-                        "goals": r["goals"],
-                        "assists": r["assists"],
-                        "rating": r["rating"],
+                        "player_id":   r["player_id"],
+                        "position":    r.get("position", ""),
+                        "goals":       r["goals"],
+                        "assists":     r["assists"],
+                        "rating":      r["rating"],
                     }
                 )
+
+        done_ids.add(tid)
+        ckpt["done_team_ids"] = list(done_ids)
+        ckpt["rows"] = all_rows
+        save_checkpoint(ckpt, ckpt_file)
+        print(f"  ✓ {tname} ({len(done_ids)}/{len(teams)})")
+
     save_cache(player_cache, cache_file)
+
     with open(out_csv, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["team", "team_id", "stat_type", "rank", "player_name", "player_id", "goals", "assists", "rating"],
+            fieldnames=["team", "team_id", "stat_type", "rank", "player_name", "player_id", "position", "goals", "assists", "rating"],
         )
         writer.writeheader()
         writer.writerows([format_row(r) for r in all_rows])
+
+    clear_checkpoint(ckpt_file)
     print(f"✅ Saved: {out_csv} ({len(all_rows)} rows)")
+
 
 if __name__ == "__main__":
     for league in LEAGUES:
