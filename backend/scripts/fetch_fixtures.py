@@ -3,8 +3,10 @@ import sys
 import os
 from datetime import datetime, timedelta
 import requests
+from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+load_dotenv()
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -14,15 +16,19 @@ DATABASE_URL = "postgresql://football_user:football_pass@localhost:5432/football
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
-# API-Football 設定
-API_KEY = "5100cfe9040d8f9db9a6f9c693915f7d"  # 替換成你的 API Key
-API_BASE = "https://v3.football.api-sports.io"
+# API-Football 設定（從環境變數讀取，勿把 key 寫進 repo）
+API_KEY = os.getenv("FOOTBALL_API_KEY") or os.getenv("football_api_key")
+API_BASE = os.getenv("FOOTBALL_API_BASE_URL", "https://v3.football.api-sports.io")
 
 # 要抓取的聯賽 ID（Premier League: 39, La Liga: 140, etc.）
 LEAGUE_IDS = [39, 140, 61, 78, 135]  # 英超、西甲、法甲、德甲、意甲
 
 def fetch_fixtures():
     """Fetch fixtures from API."""
+    if not API_KEY:
+        raise SystemExit(
+            "缺少 FOOTBALL_API_KEY。請在 backend/.env 設定後再執行。"
+        )
     db = SessionLocal()
     headers = {
         'x-rapidapi-key': API_KEY,
