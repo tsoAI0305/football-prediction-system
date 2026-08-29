@@ -32,8 +32,10 @@ There is no test suite in the frontend yet.
 Run from `../backend/`:
 
 ```bash
-# Start all services (PostgreSQL + Redis + API at http://localhost:8000)
-docker-compose up -d
+# Full stack from repo root (frontend :3000 + API :8000 + Postgres + Redis)
+docker compose up --build
+
+# Legacy: cd backend && docker compose up  (includes the root compose)
 
 # Local dev (requires DB and Redis already running)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

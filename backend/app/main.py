@@ -1,4 +1,6 @@
 ﻿"""FastAPI main application."""
+from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
@@ -8,16 +10,31 @@ from sqlalchemy.orm import Session
 from app.routers import matches, predictions, health, teams
 from app.routers import history as history_router
 from app.config import settings
-from app.database import get_db
+from app.database import get_db, init_db
+from app.models.match import Match  # noqa: F401
+from app.models.team import Team  # noqa: F401
 from app.models.prediction import Prediction
 
 # Central logging configuration
 from app.services.logging_config import configure_logging
 configure_logging()
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Create tables on startup if they are missing."""
+    try:
+        init_db()
+    except Exception:
+        logger.exception("init_db skipped (DB unreachable; expected in some tests)")
+    yield
+
 
 app = FastAPI(
     title="Football Prediction API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -27,14 +44,14 @@ app.include_router(health.router, prefix="/api/health", tags=["Health"])
 app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
 app.include_router(history_router.router)  # mounts /api/history/ directly
 
-_cors_origins = [
-    origin.strip()
-    for origin in settings.cors_origins.split(",")
-    if origin.strip()
-]
+_DEFAULT_CORS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_raw_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+if "*" in _raw_origins:
+    logger.warning("CORS '*' is not allowed; falling back to localhost")
+_cors_origins = [origin for origin in _raw_origins if origin != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins or ["http://localhost:3000"],
+    allow_origins=_cors_origins or _DEFAULT_CORS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,7 +66,8 @@ async def root():
     }
 
 @app.get("/health")
-async def health():
+async def liveness():
+    """Process liveness. Readiness (DB + Redis) is GET /api/health."""
     return {"status": "healthy"}
 
 @app.get("/api/predictions/")

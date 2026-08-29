@@ -9,7 +9,8 @@ from app.utils.cache import cache
 router = APIRouter(tags=["Health"])
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("", response_model=HealthResponse)
+@router.get("/", response_model=HealthResponse)
 async def health_check(db: Session = Depends(get_db)):
     """
     Health check endpoint.

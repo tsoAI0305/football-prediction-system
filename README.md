@@ -72,16 +72,16 @@ AI 足球預測系統是一個全棧 Web 應用，整合了傳統統計模型與
 git clone https://github.com/tsoAI0305/football-prediction-system.git
 cd football-prediction-system
 
-# 設定環境變數
-echo "GROQ_API_KEY=your_api_key_here" > backend/.env
+# 設定環境變數（可選；沒有 Groq key 也能起服務）
+cp backend/.env.example backend/.env
 
-# 啟動後端
-cd backend
-docker compose up -d
+# 從 repo 根目錄一次起前端 + API + Postgres + Redis
+docker compose up --build
 
-# 訪問前端
 # 前端：http://localhost:3000
-# 後端 API：http://localhost:8000/docs
+# API 文件：http://localhost:8000/docs
+# 存活檢查：http://localhost:8000/health
+# 就緒檢查：http://localhost:8000/api/health
 ```
 
 ---
