@@ -79,7 +79,7 @@ def import_csv_file(file_path, league_code):
                 away_team=str(row['AwayTeam']),
                 league=league_name,
                 match_date=match_date,
-                status='finished',
+                status='FINISHED',
                 home_score=int(row['FTHG']) if not pd.isna(row.get('FTHG')) else None,
                 away_score=int(row['FTAG']) if not pd.isna(row.get('FTAG')) else None,
                 # 統計數據
@@ -163,7 +163,7 @@ def import_all_data():
     # 顯示統計
     db = SessionLocal()
     total_matches = db.query(Match).count()
-    finished_matches = db.query(Match).filter_by(status='finished').count()
+    finished_matches = db.query(Match).filter_by(status='FINISHED').count()
     db.close()
     
     print(f"\n📊 Database Statistics:")

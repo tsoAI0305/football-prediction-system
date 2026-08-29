@@ -107,7 +107,7 @@ def import_csv_file(file_path, league_code):
                     if existing.home_score != new_home_score or existing.away_score != new_away_score:
                         existing.home_score = new_home_score
                         existing.away_score = new_away_score
-                        existing.status = 'finished'
+                        existing.status = 'FINISHED'
                         updated += 1
                     else:
                         skipped += 1
@@ -123,7 +123,7 @@ def import_csv_file(file_path, league_code):
                         away_team=away_team,
                         home_score=int(float(row['FTHG'])),
                         away_score=int(float(row['FTAG'])),
-                        status='finished',
+                        status='FINISHED',
                     )
                     db.add(new_match)
                     imported += 1

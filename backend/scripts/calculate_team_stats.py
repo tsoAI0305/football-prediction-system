@@ -19,7 +19,7 @@ def calculate_current_season_stats():
     
     matches = db.query(Match).filter(
         Match.match_date >= season_start,
-        Match.status == 'finished'
+        Match.status == 'FINISHED'
     ).all()
     
     print(f"📊 分析 2025/26 賽季比賽")

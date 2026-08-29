@@ -73,11 +73,11 @@ def fetch_season_matches(league_id, league_name):
             
             # 判斷狀態
             if status in ['FT', 'AET', 'PEN']:
-                match_status = 'finished'
+                match_status = 'FINISHED'
                 home_score = fixture['goals']['home']
                 away_score = fixture['goals']['away']
             elif status in ['NS', 'TBD']:
-                match_status = 'upcoming'
+                match_status = 'SCHEDULED'
                 home_score = None
                 away_score = None
             else:
