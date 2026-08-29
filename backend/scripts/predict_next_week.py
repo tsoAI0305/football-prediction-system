@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from app.database import SessionLocal
 from app.models.match import Match
-from app.services.feature_engineer import build_feature_matrix
+from app.services.feature_engineer import add_diff_features, build_feature_matrix
 from app.services.ml_service import MLService
 
 
@@ -72,6 +72,7 @@ def main():
             "home_team":  m.home_team,
             "away_team":  m.away_team,
             "league":     m.league,
+            "season":     m.season,
             "match_date": m.match_date,
         } for m in upcoming])
 

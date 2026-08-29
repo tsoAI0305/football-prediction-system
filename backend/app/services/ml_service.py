@@ -11,24 +11,20 @@ logger = logging.getLogger(__name__)
 
 # ── Feature 欄位定義（與 feature_engineer 輸出對齊）─────────────────────────
 FEATURE_COLS = [
-    # 排名與積分
     "home_rank", "home_points", "home_goal_diff", "home_wins",
     "home_draws", "home_losses", "home_played",
     "home_goals_for", "home_goals_against",
     "away_rank", "away_points", "away_goal_diff", "away_wins",
     "away_draws", "away_losses", "away_played",
     "away_goals_for", "away_goals_against",
-    # 排名差
     "rank_diff", "points_diff", "gd_diff",
-    # 傷員
-    "home_inj_count", "away_inj_count",
-    "home_key_inj_impact", "away_key_inj_impact",
-    # 進攻強度
-    "home_top3_goals", "home_top3_assists", "home_top3_avg_rating",
-    "away_top3_goals", "away_top3_assists", "away_top3_avg_rating",
-    # 歷史勝率
     "home_home_win_rate", "home_away_win_rate", "home_recent_form",
     "away_home_win_rate", "away_away_win_rate", "away_recent_form",
+    "home_elo", "away_elo", "elo_diff",
+    "home_rest_days", "away_rest_days",
+    "h2h_home_win_rate", "h2h_games",
+    "home_shots_pg", "away_shots_pg", "shots_diff",
+    "implied_home", "implied_draw", "implied_away",
 ]
 
 TARGET_COL = "result"  # H / D / A

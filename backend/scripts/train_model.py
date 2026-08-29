@@ -11,7 +11,7 @@ import pandas as pd
 from pathlib import Path
 from app.database import SessionLocal
 from app.models.match import Match
-from app.services.feature_engineer import build_feature_matrix
+from app.services.feature_engineer import add_diff_features, build_feature_matrix
 from app.services.ml_service import MLService, FEATURE_COLS
 
 
@@ -30,8 +30,9 @@ def load_training_data(db):
         total = m.home_score + m.away_score
         rows.append({
             "match_id": m.id, "home_team": m.home_team, "away_team": m.away_team,
-            "league": m.league, "match_date": m.match_date,
+            "league": m.league, "season": m.season, "match_date": m.match_date,
             "home_score": m.home_score, "away_score": m.away_score,
+            "b365_home": m.b365_home, "b365_draw": m.b365_draw, "b365_away": m.b365_away,
             "result": "H" if m.home_score>m.away_score else ("A" if m.away_score>m.home_score else "D"),
             "total_goals": total, "over25": int(total > 2.5),
         })
