@@ -238,6 +238,8 @@ next-env.d.ts
 *.bak
 *_backup/
 frontend_backup/
+ops/logs/
+ops/backups/
 
 # OS
 .DS_Store
