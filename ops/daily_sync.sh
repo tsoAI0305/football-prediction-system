@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Linux 終端機（WSL）手動跑同一件事。排程請用 ops/register_schedules.ps1，不要靠 WSL cron。
+# 每日同步的唯一實作。Linux 上交給 cron；這台 Windows 由工作排程器呼叫 Git Bash 跑這支。
 #   bash ops/daily_sync.sh
 #   bash ops/daily_sync.sh --dry-run
 
 set -uo pipefail
+
+if [ -d "/c/Program Files/Docker/Docker/resources/bin" ]; then
+  PATH="/c/Program Files/Docker/Docker/resources/bin:$PATH"
+  export PATH
+fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"

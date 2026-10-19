@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
-# Linux 終端機手動備份。排程請用 Windows 工作排程器。
+# 資料庫備份的唯一實作。Linux 上交給 cron；這台 Windows 由工作排程器呼叫 Git Bash 跑這支。
 #   bash ops/backup_db.sh
 
 set -uo pipefail
+
+if [ -d "/c/Program Files/Docker/Docker/resources/bin" ]; then
+  PATH="/c/Program Files/Docker/Docker/resources/bin:$PATH"
+  export PATH
+fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
