@@ -45,12 +45,58 @@ def test_root_endpoint():
 
 
 def test_health_check():
-    """Test health check endpoint."""
+    """Liveness does not check the database or Redis."""
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert "status" in data
     assert data["status"] == "healthy"
+
+
+def test_readiness_unhealthy_without_redis(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", False)
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "unhealthy"
+    assert body["database"] == "healthy"
+    assert body["redis"] == "unhealthy"
+
+
+def test_readiness_ok_when_db_and_redis_up(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", True)
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    assert response.json()["redis"] == "healthy"
+
+
+def test_readiness_db_down(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", True)
+
+    class _Down:
+        def execute(self, *_args, **_kwargs):
+            raise RuntimeError("db down")
+
+        def close(self):
+            return None
+
+    def _override():
+        db = _Down()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _override
+    try:
+        response = client.get("/api/health")
+        assert response.status_code == 503
+        body = response.json()
+        assert body["status"] == "unhealthy"
+        assert body["database"].startswith("unhealthy")
+    finally:
+        app.dependency_overrides[get_db] = override_get_db
 
 
 def test_get_matches_empty():
