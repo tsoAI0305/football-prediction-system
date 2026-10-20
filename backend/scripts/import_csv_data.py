@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 from datetime import datetime
 from app.database import SessionLocal
-from app.models.match import Match
+from app.models.match import Match, MatchStatus
 
 def import_csv_season(url, league_name):
     """從 CSV 匯入一個賽季的資料."""
@@ -46,7 +46,7 @@ def import_csv_season(url, league_name):
                 away_team=row['AwayTeam'],
                 home_score=int(row['FTHG']) if pd.notna(row['FTHG']) else None,
                 away_score=int(row['FTAG']) if pd.notna(row['FTAG']) else None,
-                status='finished',
+                status=MatchStatus.FINISHED.value,
             )
             
             db.add(new_match)

@@ -24,7 +24,8 @@ class Match(Base):
     id = Column(Integer, primary_key=True, index=True)
     league = Column(String, index=True)
     match_date = Column(DateTime, index=True)
-    status = Column(String, default="scheduled")
+    status = Column(String, default="SCHEDULED", index=True)
+    season = Column(String, nullable=True, index=True)  # e.g. 2526
     
     # 直接儲存球隊名稱（主要使用）
     home_team = Column(String, nullable=True, index=True)

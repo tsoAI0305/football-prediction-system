@@ -18,11 +18,31 @@
 
 ## 🛠️ 開發環境
 
-### 後端
+### 一鍵起整站（建議）
+在 repo 根目錄：`docker compose up --build`
+
+### 後端（本機）
 cd backend && python -m venv venv && pip install -r requirements.txt
 
-### 前端
+### 前端（本機，若不用 compose 的 web）
 cd frontend && npm install && npm run dev
+
+## 📝 分支與提交（圖才好看）
+
+顏色只是 Git Graph 用來區分同時存在的線，沒有「橘=Phase 1」這種意思。
+
+- `main`：已合併的主線
+- 一條功能分支做完再開 PR，**不要一個 phase 開一條 branch**
+- 準確率主線用 `feat/accuracy-roadmap`，每個 phase 一個 commit，訊息帶 phase 前綴
+
+```
+feat(phase0-boot): ...
+feat(phase0): ...
+feat(phase1): ...
+feat(phase1b): ...
+```
+
+這樣圖上同一條彩色線、點旁邊就能看出做到哪一階段。
 
 ## 📝 提交訊息規範
 feat: 新功能

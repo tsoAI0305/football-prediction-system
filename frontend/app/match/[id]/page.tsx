@@ -1,4 +1,3 @@
-import { getMatchDetails, getPrediction } from '@/lib/api'
 import { mockMatches, mockPredictions, mockTeamStats } from '@/lib/mockData'
 import { formatDate } from '@/lib/utils'
 import PredictionPanel from '@/components/PredictionPanel'
@@ -25,23 +24,8 @@ export default async function MatchDetailPage({ params }: PageProps) {
   const { id } = await params
   const matchId = parseInt(id)
 
-  let match = null
-  let prediction = null
-
-  try {
-    match = await getMatchDetails(matchId)
-    prediction = await getPrediction(matchId)
-  } catch {
-    // fall through to mock data
-  }
-
-  // Fall back to mock data
-  if (!match) {
-    match = mockMatches.find((m) => m.id === matchId) ?? null
-  }
-  if (!prediction) {
-    prediction = mockPredictions[matchId] ?? null
-  }
+  const match = mockMatches.find((m) => m.id === matchId) ?? null
+  const prediction = mockPredictions[matchId] ?? null
 
   if (!match) {
     return <ErrorMessage message="找不到比賽資訊" />

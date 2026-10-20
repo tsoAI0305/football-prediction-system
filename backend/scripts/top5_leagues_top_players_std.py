@@ -18,5 +18,8 @@ for csv_file in data_dir.glob("*_team_top_players_sofascore.csv"):
     std_csv = csv_file.with_name(csv_file.stem + "_std.csv")
     df = pd.read_csv(csv_file)
     df["team_std"] = df["team"].map(map_team_name)
+    # Ensure position column exists (older CSVs may not have it)
+    if "position" not in df.columns:
+        df["position"] = ""
     df.to_csv(std_csv, index=False)
     print(f"✅ std轉換完成: {std_csv}")

@@ -27,36 +27,29 @@ AI-powered football match prediction system with ML analysis and betting insight
 ### 一鍵啟動
 
 ```bash
-# 1. 克隆專案
+# 1. 克隆專案後到 repo 根目錄（不要只在 backend/ 起）
 git clone https://github.com/tsoAI0305/football-prediction-system.git
-cd football-prediction-system/backend
+cd football-prediction-system
 
 # 2. 設定環境變數
-cp .env.example .env
-# 編輯 .env 填入你的配置（可選，使用預設值也能運行）
+cp backend/.env.example backend/.env
 
-# 3. 啟動所有服務 (PostgreSQL + Redis + API)
-docker-compose up -d
+# 3. 一次啟動 Postgres + Redis + API + 前端
+docker compose up --build
 
-# 4. 查看服務狀態
-docker-compose ps
-
-# 5. 訪問 API 文檔
-# 瀏覽器打開: http://localhost:8000/docs
+# 4. 前端 http://localhost:3000 ／ API http://localhost:8000/docs
 ```
+
+`backend/docker-compose.yml` 已改為轉到根目錄 compose，僅為相容舊指令保留。
 
 ### 驗證安裝
 
 ```bash
-# 檢查健康狀態
+# 存活
 curl http://localhost:8000/health
 
-# 預期輸出
-{
-  "status": "healthy",
-  "database": "healthy",
-  "redis": "healthy"
-}
+# 就緒（DB + Redis）
+curl http://localhost:8000/api/health
 ```
 
 ## 📊 API 端點
@@ -65,9 +58,10 @@ curl http://localhost:8000/health
 
 ```http
 GET /health
+GET /api/health
 ```
 
-返回 API、資料庫和 Redis 的健康狀態。
+`/health` 只表示 process 存活。`/api/health` 回傳資料庫與 Redis 狀態。
 
 ### 賽事列表
 

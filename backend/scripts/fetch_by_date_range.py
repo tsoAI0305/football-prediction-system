@@ -65,18 +65,18 @@ def fetch_matches_by_date(league_id, league_name, from_date, to_date):
                 if fixture['status']['short'] in ['FT', 'AET', 'PEN']:
                     existing.home_score = goals.get('home')
                     existing.away_score = goals.get('away')
-                    existing.status = 'finished'
+                    existing.status = 'FINISHED'
                 continue
             
             # 建立新記錄
             match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
             
             status_map = {
-                'FT': 'finished', 'AET': 'finished', 'PEN': 'finished',
+                'FT': 'FINISHED', 'AET': 'FINISHED', 'PEN': 'FINISHED',
                 '1H': 'live', '2H': 'live', 'HT': 'live', 'LIVE': 'live',
-                'NS': 'scheduled', 'TBD': 'scheduled',
+                'NS': 'SCHEDULED', 'TBD': 'SCHEDULED',
             }
-            status = status_map.get(fixture['status']['short'], 'cancelled')
+            status = status_map.get(fixture['status']['short'], 'CANCELED')
             
             new_match = Match(
                 league=league_name,

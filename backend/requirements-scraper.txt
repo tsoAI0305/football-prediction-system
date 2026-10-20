@@ -1,0 +1,4 @@
+# 本機跑爬蟲腳本時再裝；API Docker image 不需要
+-r requirements.txt
+beautifulsoup4==4.12.2
+playwright==1.40.0

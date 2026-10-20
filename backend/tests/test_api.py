@@ -45,12 +45,58 @@ def test_root_endpoint():
 
 
 def test_health_check():
-    """Test health check endpoint."""
+    """Liveness does not check the database or Redis."""
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert "status" in data
     assert data["status"] == "healthy"
+
+
+def test_readiness_unhealthy_without_redis(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", False)
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "unhealthy"
+    assert body["database"] == "healthy"
+    assert body["redis"] == "unhealthy"
+
+
+def test_readiness_ok_when_db_and_redis_up(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", True)
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    assert response.json()["redis"] == "healthy"
+
+
+def test_readiness_db_down(monkeypatch):
+    monkeypatch.setattr("app.routers.health.cache.enabled", True)
+
+    class _Down:
+        def execute(self, *_args, **_kwargs):
+            raise RuntimeError("db down")
+
+        def close(self):
+            return None
+
+    def _override():
+        db = _Down()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = _override
+    try:
+        response = client.get("/api/health")
+        assert response.status_code == 503
+        body = response.json()
+        assert body["status"] == "unhealthy"
+        assert body["database"].startswith("unhealthy")
+    finally:
+        app.dependency_overrides[get_db] = override_get_db
 
 
 def test_get_matches_empty():
@@ -158,45 +204,68 @@ def test_get_match_detail_not_found():
     assert response.status_code == 404
 
 
-def test_create_prediction():
-    """Test creating a prediction."""
-    # Create test data
-    db = TestingSessionLocal()
-    
-    team1 = Team(name="Bayern Munich", league="GER_B1", current_points=60, current_gd=35)
-    team2 = Team(name="Borussia Dortmund", league="GER_B1", current_points=55, current_gd=25)
-    db.add(team1)
-    db.add(team2)
-    db.commit()
-    
+def _scheduled_match(db):
     match = Match(
         league="GER_B1",
         match_date=datetime.now(timezone.utc) + timedelta(days=2),
         status=MatchStatus.SCHEDULED.value,
-        home_team_id=team1.id,
-        away_team_id=team2.id,
+        home_team="Bayern Munich",
+        away_team="Borussia Dortmund",
         odds_home=1.8,
         odds_draw=3.5,
-        odds_away=4.0
+        odds_away=4.0,
     )
     db.add(match)
     db.commit()
     match_id = match.id
     db.close()
-    
-    # Test API - should create prediction
+    return match_id
+
+
+def test_get_prediction_without_ml_file_returns_match_only():
+    """A match that is not in final_predictions.json has no prediction block."""
+    db = TestingSessionLocal()
+    match_id = _scheduled_match(db)
+
     response = client.get(f"/api/predictions/{match_id}")
     assert response.status_code == 200
     data = response.json()
-    assert "prediction" in data
-    assert "betting" in data
-    assert "analysis" in data
-    
-    # Test API again - should return existing prediction
+    assert data["match_id"] == match_id
+    assert data["league"] == "GER_B1"
+    assert data["home_team"] == "Bayern Munich"
+    assert "prediction" not in data
+
+
+def test_get_prediction_includes_ml_block(monkeypatch):
+    """When the JSON file has this match, the response carries that prediction."""
+    db = TestingSessionLocal()
+    match_id = _scheduled_match(db)
+    ml = {
+        "prediction": "H",
+        "confidence": 0.62,
+        "home_win_prob": 0.62,
+        "draw_prob": 0.22,
+        "away_win_prob": 0.16,
+        "over25_prob": 0.55,
+        "under25_prob": 0.45,
+        "ou_pick": "OVER",
+        "betting_advice": "lean home",
+    }
+
+    def _fake_json():
+        return [{"match_id": match_id, "prediction": ml}]
+
+    monkeypatch.setattr("app.routers.predictions._load_predictions_json", _fake_json)
+
+    response = client.get(f"/api/predictions/{match_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["prediction"]["prediction"] == "H"
+    assert "llm_analysis" in data
+
     response2 = client.get(f"/api/predictions/{match_id}")
     assert response2.status_code == 200
-    data2 = response2.json()
-    assert data["id"] == data2["id"]
+    assert response2.json()["prediction"]["prediction"] == "H"
 
 
 def test_get_prediction_not_found():

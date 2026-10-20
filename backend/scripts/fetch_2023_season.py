@@ -66,11 +66,11 @@ def fetch_league_season(league_id, league_name, season=2023):
             match_date = datetime.fromisoformat(fixture['date'].replace('Z', '+00:00'))
             
             status_map = {
-                'FT': 'finished', 'AET': 'finished', 'PEN': 'finished',
+                'FT': 'FINISHED', 'AET': 'FINISHED', 'PEN': 'FINISHED',
                 '1H': 'live', '2H': 'live', 'HT': 'live',
-                'NS': 'scheduled', 'TBD': 'scheduled',
+                'NS': 'SCHEDULED', 'TBD': 'SCHEDULED',
             }
-            status = status_map.get(fixture['status']['short'], 'cancelled')
+            status = status_map.get(fixture['status']['short'], 'CANCELED')
             
             new_match = Match(
                 league=league_name,

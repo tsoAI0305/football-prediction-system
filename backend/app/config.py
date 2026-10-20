@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # CORS
-    cors_origins: str = ["http://localhost:3000", "http://localhost:8000"]
+    # CORS（本機前端；可用 CORS_ORIGINS 覆寫，逗號分隔。禁止 *）
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     
     # Application
     app_name: str = "Football Prediction API"

@@ -1,31 +1,57 @@
 ﻿"""FastAPI main application."""
+from contextlib import asynccontextmanager
+import logging
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import json
 import os
 from sqlalchemy.orm import Session
-from app.routers import matches, predictions, health
-from app.database import get_db
+from app.routers import matches, predictions, health, teams
+from app.routers import history as history_router
+from app.config import settings
+from app.database import get_db, init_db
+from app.models.match import Match  # noqa: F401
+from app.models.team import Team  # noqa: F401
 from app.models.prediction import Prediction
 
 # Central logging configuration
 from app.services.logging_config import configure_logging
 configure_logging()
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Create tables on startup if they are missing."""
+    try:
+        init_db()
+    except Exception:
+        logger.exception("init_db skipped (DB unreachable; expected in some tests)")
+    yield
+
 
 app = FastAPI(
     title="Football Prediction API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 
 app.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
 app.include_router(predictions.router, prefix="/api/predictions", tags=["Predictions"])
 app.include_router(health.router, prefix="/api/health", tags=["Health"])
+app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
+app.include_router(history_router.router)  # mounts /api/history/ directly
 
+_DEFAULT_CORS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_raw_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+if "*" in _raw_origins:
+    logger.warning("CORS '*' is not allowed; falling back to localhost")
+_cors_origins = [origin for origin in _raw_origins if origin != "*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins or _DEFAULT_CORS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,7 +66,8 @@ async def root():
     }
 
 @app.get("/health")
-async def health():
+async def liveness():
+    """Process liveness. Readiness (DB + Redis) is GET /api/health."""
     return {"status": "healthy"}
 
 @app.get("/api/predictions/")
@@ -106,72 +133,90 @@ async def get_teams(league: Optional[str] = None):
     
     return {"teams": sorted(list(teams)), "count": len(teams)}
 
-@app.get("/api/history/")
-async def get_history(
-    limit: int = Query(30, le=100),
-    only_completed: bool = Query(False),
-    db: Session = Depends(get_db)
-):
-    """取得預測歷史記錄。優先讀取 data/final_predictions.json，若不存在則從 DB 查詢 Prediction。"""
-    predictions_file = "data/final_predictions.json"
-    history_records = []
+def _load_csv_results() -> dict:  # kept for any legacy internal callers
+    """Load match results into a lookup dict from all available result sources.
 
-    if os.path.exists(predictions_file):
-        with open(predictions_file, "r", encoding="utf-8") as f:
-            predictions = json.load(f)
-        for idx, pred in enumerate(predictions[:limit], 1):
-            record = {
-                "id": idx,
-                "date": pred.get("date"),
-                "time": pred.get("time"),
-                "league": pred.get("league"),
-                "home_team": pred.get("home_team"),
-                "away_team": pred.get("away_team"),
-                "predicted_result": pred.get("prediction", {}).get("prediction"),
-                "predicted_score": pred.get("prediction", {}).get("expected_score"),
-                "confidence": pred.get("prediction", {}).get("confidence"),
-                "actual_result": None,
-                "actual_score": None,
-                "is_correct": None
-            }
-            history_records.append(record)
-    else:
-        # Read from DB
-        preds = db.query(Prediction).order_by(Prediction.created_at.desc()).limit(limit).all()
-        for idx, p in enumerate(preds, 1):
-            # find match to get teams
-            match = db.query(__import__('app.models.match', fromlist=['Match']).Match).filter(__import__('app.models.match', fromlist=['Match']).Match.id == p.match_id).first()
-            home = match.home_team if match and match.home_team else None
-            away = match.away_team if match and match.away_team else None
-            record = {
-                "id": idx,
-                "date": getattr(p, 'created_at', None),
-                "time": None,
-                "league": getattr(match, 'league', None),
-                "home_team": home,
-                "away_team": away,
-                "predicted_result": getattr(p.predicted_result, 'value', None),
-                "predicted_score": None,
-                "confidence": p.confidence_home if p else None,
-                "actual_result": getattr(p.actual_result, 'value', None) if p.actual_result else None,
-                "actual_score": None,
-                "is_correct": p.is_correct
-            }
-            history_records.append(record)
+    Sources (in order of preference):
+    1. match_results.csv — output of update_results_and_retrain.py (when present)
+    2. football-data.co.uk league files (e.g. E0_2526.csv, D1_2526.csv)
 
-    if only_completed:
-        history_records = [r for r in history_records if r["actual_result"] is not None]
+    Key: (date_iso, home_std, away_std)  →  (home_score, away_score)
+    All team names are normalised through std_team() before storage so that
+    fuzzy-matched queries ("Eintracht Frankfurt" vs "Ein Frankfurt") resolve
+    to the same canonical key.
+    """
+    from app.utils.helpers import std_team as _std
+    import csv as _csv
+    import glob as _glob
+    import re as _re
 
-    total = len(history_records)
-    correct = sum(1 for r in history_records if r.get("is_correct"))
-    accuracy = (100.0 * correct / total) if total > 0 else 0
+    lookup: dict = {}
 
-    return {
-        "total": total,
-        "correct": correct,
-        "accuracy": accuracy,
-        "records": history_records
-    }
+    def _ingest_row(date_raw: str, home_raw: str, away_raw: str,
+                    score_h: str, score_a: str) -> None:
+        """Parse one result row and insert into lookup (does not overwrite)."""
+        if not (date_raw and home_raw and away_raw and score_h and score_a):
+            return
+        try:
+            sh = int(float(score_h))
+            sa = int(float(score_a))
+        except (ValueError, TypeError):
+            return
+        # Accept YYYY-MM-DD directly or convert from DD/MM/YYYY
+        date_raw = date_raw.strip()
+        try:
+            if "-" in date_raw and len(date_raw) == 10:
+                date_iso = date_raw
+            else:
+                parts = date_raw.split("/")
+                if len(parts) == 3:
+                    date_iso = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                else:
+                    return
+        except Exception:
+            return
+        key = (date_iso, _std(home_raw.strip()), _std(away_raw.strip()))
+        if key not in lookup:
+            lookup[key] = (sh, sa)
+
+    # ── 1. match_results.csv (generated by update_results_and_retrain.py) ──
+    mr_path = os.path.join("data", "match_results.csv")
+    if os.path.exists(mr_path):
+        try:
+            with open(mr_path, encoding="utf-8-sig", newline="") as f:
+                reader = _csv.DictReader(f)
+                for row in reader:
+                    _ingest_row(
+                        row.get("date", "") or row.get("match_date", ""),
+                        row.get("home_team", ""),
+                        row.get("away_team", ""),
+                        row.get("home_score", "") or row.get("FTHG", ""),
+                        row.get("away_score", "") or row.get("FTAG", ""),
+                    )
+        except Exception:
+            pass
+
+    # ── 2. football-data.co.uk league files ───────────────────────────────
+    for path in _glob.glob(os.path.join("data", "*.csv")):
+        fname = os.path.basename(path)
+        if not _re.match(r"^[A-Z][A-Z0-9]_\d{4}\.csv$", fname):
+            continue
+        try:
+            with open(path, encoding="utf-8-sig", newline="") as f:
+                reader = _csv.DictReader(f)
+                for row in reader:
+                    _ingest_row(
+                        row.get("Date", ""),
+                        row.get("HomeTeam", ""),
+                        row.get("AwayTeam", ""),
+                        row.get("FTHG", ""),
+                        row.get("FTAG", ""),
+                    )
+        except Exception:
+            pass
+
+    return lookup
+
 
 @app.get("/api/history/stats")
 async def get_history_stats():
@@ -209,101 +254,3 @@ async def get_history_stats():
         "league_distribution": league_stats,
         "accuracy_rate": None
     }
-@app.get("/api/teams/{team_name}")
-async def get_team_details(team_name: str):
-    """取得球隊詳細資訊"""
-    import sys
-    sys.path.insert(0, "scripts")
-    from predict_match import predict_match
-    
-    predictions_file = "data/final_predictions.json"
-    
-    if not os.path.exists(predictions_file):
-        raise HTTPException(status_code=404, detail="預測資料未生成")
-    
-    with open(predictions_file, "r", encoding="utf-8") as f:
-        all_predictions = json.load(f)
-    
-    # 找到該球隊的任一場比賽
-    team_match = None
-    opponent = None
-    league = None
-    upcoming_matches = []
-    
-    for pred in all_predictions:
-        if pred["home_team"] == team_name:
-            if not team_match:
-                team_match = pred
-                opponent = pred["away_team"]
-                league = pred["league"]
-            upcoming_matches.append(pred)
-        elif pred["away_team"] == team_name:
-            if not team_match:
-                team_match = pred
-                opponent = pred["home_team"]
-                league = pred["league"]
-            upcoming_matches.append(pred)
-    
-    if not team_match:
-        raise HTTPException(status_code=404, detail=f"找不到球隊: {team_name}")
-    
-    # 主動計算主客場數據
-    home_prediction = predict_match(team_name, opponent)
-    home_analysis = home_prediction.get("analysis", {})
-    home_win_rate = home_analysis.get("home_win_rate", 0)
-    home_score = home_analysis.get("home_total_score", 0)
-    home_avg_goals = home_analysis.get("home_avg_goals", 0)
-    recent_form = home_analysis.get("home_form", "")
-    
-    away_prediction = predict_match(opponent, team_name)
-    away_analysis = away_prediction.get("analysis", {})
-    away_win_rate = away_analysis.get("away_win_rate", 0)
-    away_score = away_analysis.get("away_total_score", 0)
-    away_avg_goals = away_analysis.get("away_avg_goals", 0)
-    
-    total_score = max(home_score, away_score)
-    avg_goals = (home_avg_goals + away_avg_goals) / 2
-    
-    # 簡化排名計算（基於綜合實力分數）
-    league_teams = {}
-    
-    for pred in all_predictions:
-        if pred["league"] != league:
-            continue
-        
-        h_team = pred["home_team"]
-        a_team = pred["away_team"]
-        analysis = pred["prediction"]["analysis"]
-        
-        h_score = analysis["home_total_score"]
-        a_score = analysis["away_total_score"]
-        
-        if h_team not in league_teams or league_teams[h_team] < h_score:
-            league_teams[h_team] = h_score
-        if a_team not in league_teams or league_teams[a_team] < a_score:
-            league_teams[a_team] = a_score
-    
-    # 將當前球隊加入（確保有排名）
-    if team_name not in league_teams:
-        league_teams[team_name] = total_score
-    else:
-        league_teams[team_name] = max(league_teams[team_name], total_score)
-    
-    # 排序
-    sorted_teams = sorted(league_teams.items(), key=lambda x: x[1], reverse=True)
-    overall_ranking = next((i+1 for i, (t, _) in enumerate(sorted_teams) if t == team_name), None)
-    
-    return {
-        "team_name": team_name,
-        "league": league,
-        "recent_form": recent_form,
-        "total_score": total_score,
-        "home_win_rate": home_win_rate,
-        "away_win_rate": away_win_rate,
-        "home_score": home_score,
-        "away_score": away_score,
-        "avg_goals": round(avg_goals, 2),
-        "overall_ranking": overall_ranking,
-        "total_teams": len(league_teams),
-        "upcoming_matches": len(upcoming_matches)
-    } 
