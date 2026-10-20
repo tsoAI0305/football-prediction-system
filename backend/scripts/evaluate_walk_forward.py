@@ -1,8 +1,11 @@
 """
 Walk-forward check: train on seasons before hold-out, test on 2526.
 
-Compares the as-of ensemble to a B365 implied-probability baseline.
-Only rows with B365 are scored so the comparison is fair.
+Probability score uses proportionally de-vigged B365 prices.
+The paper ledger settles at the raw decimal price and skips short
+favourites and thin edges. A non-positive yield exits 2.
+
+Historical backtest only. Not a betting recommendation.
 
   docker compose exec api python scripts/evaluate_walk_forward.py
 """
@@ -18,6 +21,14 @@ from app.database import SessionLocal
 from app.models.match import Match, MatchStatus
 from app.services.feature_engineer import build_feature_matrix, implied_probs
 from app.services.ml_service import MLService
+from app.services.paper_ledger import (
+    MIN_DECIMAL_ODDS,
+    MIN_EDGE,
+    decide,
+    overround,
+    settle,
+    summarize,
+)
 import pandas as pd
 
 
@@ -114,17 +125,45 @@ def main():
         y = _labels(feat_test["result"]).to_numpy()
         odds_p = _odds_matrix(feat_test)
 
+        odds = feat_test[["b365_home", "b365_draw", "b365_away"]].to_numpy(dtype=float)
+        mean_vig = float(np.mean([overround(row) for row in odds]))
+
         print(f"\nwalk-forward hold-out {HOLD_OUT} (B365 rows only)")
+        print(f"  probability baseline is proportional de-vig; mean overround={mean_vig:.3f}")
         model = _report("model", y, model_p)
-        base = _report("B365 implied", y, odds_p)
-        acc_win = model["accuracy"] > base["accuracy"]
-        ll_win = model["log_loss"] < base["log_loss"]
+        base = _report("B365 devig", y, odds_p)
         print(
-            f"\nbeats odds on accuracy: {acc_win}   "
-            f"beats odds on log_loss: {ll_win}"
+            f"\nbeats devig on accuracy: {model['accuracy'] > base['accuracy']}   "
+            f"beats devig on log_loss: {model['log_loss'] < base['log_loss']}"
         )
-        if not (acc_win or ll_win):
-            print("did not beat the market — inspect leakage and team-name joins before adding features")
+
+        bets = []
+        counts = {"bet": 0, "short_favorite": 0, "thin_edge": 0}
+        results = feat_test["result"].tolist()
+        for i, result in enumerate(results):
+            decision = decide(model_p[i], odds_p[i], odds[i])
+            counts[decision["action"]] += 1
+            if decision["action"] != "bet":
+                continue
+            row = settle(decision["side"], result, decision["odds"], decision["stake"])
+            bets.append(row)
+        ledger = summarize(bets)
+        print(
+            "\npaper ledger (flat 1 unit at raw B365; "
+            f"skip odds < {MIN_DECIMAL_ODDS:.2f} or edge < {MIN_EDGE:.2f})"
+        )
+        print("  historical backtest only — not a betting recommendation")
+        print(
+            f"  bets={ledger['n_bets']}  hits={ledger['hits']}  "
+            f"hit_rate={ledger['hit_rate']:.3f}  "
+            f"profit={ledger['profit']:.2f}  yield={ledger['yield']:.3f}"
+        )
+        print(
+            f"  skipped short_favorite={counts['short_favorite']}  "
+            f"thin_edge={counts['thin_edge']}"
+        )
+        if ledger["yield"] <= 0:
+            print("paper ledger yield is not positive")
             sys.exit(2)
     finally:
         db.close()
