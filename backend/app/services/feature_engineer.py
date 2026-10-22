@@ -8,7 +8,6 @@ not used for training (they leak the present into the past).
 from __future__ import annotations
 
 import math
-import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -18,6 +17,8 @@ from typing import Dict, Iterable, List, Optional
 import pandas as pd
 from sqlalchemy.orm import Session
 
+from app.utils.helpers import std_team
+
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 ELO_START = 1500.0
@@ -26,12 +27,8 @@ ELO_K = 20.0
 
 
 def _std_name(name: str) -> str:
-    try:
-        from unidecode import unidecode
-        name = unidecode(str(name))
-    except ImportError:
-        name = str(name)
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    """Canonical team key (aliases included)."""
+    return std_team(name)
 
 
 def add_diff_features(df: pd.DataFrame) -> pd.DataFrame:
