@@ -21,6 +21,7 @@ from pathlib import Path
 
 from app.database import SessionLocal
 from app.models.match import Match, MatchStatus
+from app.utils.helpers import std_team
 from app.utils.season import season_from_date
 
 DEFAULT_SEASONS = ["2122", "2223", "2324", "2425", "2526"]
@@ -62,6 +63,13 @@ TEAM_NAME_MAP = {
     "St Etienne": "Saint-Étienne",
     "Marseille": "Olympique de Marseille",
     "Lyon": "Olympique Lyonnais",
+    "Betis": "Real Betis",
+    "St Pauli": "FC St. Pauli",
+    "Hamburg": "Hamburger SV",
+    "Bochum": "VfL Bochum",
+    "Levante": "Levante UD",
+    "Hoffenheim": "TSG Hoffenheim",
+    "Oviedo": "Real Oviedo",
 }
 
 HEADERS = {
@@ -128,6 +136,22 @@ def save_local(df: pd.DataFrame, file_code: str, season: str) -> None:
     print(f"     saved {path.name}")
 
 
+def _find_existing(db, home: str, away: str, dt):
+    """Match a row even when the DB still has SofaScore / short-form names."""
+    hs, as_ = std_team(home), std_team(away)
+    day_start = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    candidates = (
+        db.query(Match)
+        .filter(Match.match_date >= day_start, Match.match_date <= day_end)
+        .all()
+    )
+    for m in candidates:
+        if m.home_team and m.away_team and std_team(m.home_team) == hs and std_team(m.away_team) == as_:
+            return m
+    return None
+
+
 def _fill(existing, attr, val) -> bool:
     if val is not None and getattr(existing, attr) is None:
         setattr(existing, attr, val)
@@ -173,26 +197,7 @@ def upsert_league(df: pd.DataFrame, league_name: str, season: str, db) -> dict:
         avg_d = to_float(row.get("AvgD"))
         avg_a = to_float(row.get("AvgA"))
 
-        existing = (
-            db.query(Match)
-            .filter(
-                Match.home_team == home,
-                Match.away_team == away,
-                Match.match_date == dt,
-            )
-            .first()
-        )
-        if not existing:
-            existing = (
-                db.query(Match)
-                .filter(
-                    Match.home_team == home,
-                    Match.away_team == away,
-                    Match.match_date >= dt.replace(hour=0, minute=0),
-                    Match.match_date <= dt.replace(hour=23, minute=59),
-                )
-                .first()
-            )
+        existing = _find_existing(db, home, away, dt)
 
         if existing:
             changed = False
@@ -207,6 +212,12 @@ def upsert_league(df: pd.DataFrame, league_name: str, season: str, db) -> dict:
                 changed = True
             if row_season and existing.season != row_season:
                 existing.season = row_season
+                changed = True
+            if existing.home_team != home:
+                existing.home_team = home
+                changed = True
+            if existing.away_team != away:
+                existing.away_team = away
                 changed = True
             for attr, val in (
                 ("home_shots", home_shots),

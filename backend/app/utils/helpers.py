@@ -133,6 +133,8 @@ _TEAM_ALIASES: dict[str, str] = {
     "fcaugsburg":            "augsburg",
     "scfreiburg":            "freiburg",
     "tsghoffenheim":         "hoffenheim",
+    "1899hoffenheim":        "hoffenheim",   # "1899 Hoffenheim"
+    "tsg1899hoffenheim":     "hoffenheim",
     # RB Leipzig
     "rbleipzig":             "leipzig",
     "rblpzig":               "leipzig",
@@ -151,6 +153,10 @@ _TEAM_ALIASES: dict[str, str] = {
     # VfL Wolfsburg
     "vflwolfsburg":          "wolfsburg",
     "wolfsburgfc":           "wolfsburg",
+    "vflbochum":             "bochum",       # "VfL Bochum" vs "Bochum"
+    "fcstpauli":             "stpauli",      # "FC St. Pauli" vs "St Pauli"
+    "stpauli":               "stpauli",
+    "hamburgersv":           "hamburg",      # "Hamburger SV" vs "Hamburg"
     # Schalke 04
     "fcschalke04":           "schalke",
     "schalke04":             "schalke",
@@ -181,6 +187,9 @@ _TEAM_ALIASES: dict[str, str] = {
     "villarrealcf":          "villarreal",
     "athleticbilbao":        "athleticclub",
     "realbetisfc":           "realbetis",
+    "betis":                 "realbetis",    # football-data "Betis"
+    "levanteud":             "levante",      # "Levante UD"
+    "oviedo":                "realoviedo",   # "Oviedo" vs "Real Oviedo"
     "realsociedadfootball":  "realsociedad",
     "caosasuna":             "osasuna",
     # Other La Liga

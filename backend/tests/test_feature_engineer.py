@@ -6,6 +6,7 @@ from app.services.feature_engineer import (
     build_feature_matrix,
     implied_probs,
 )
+from app.utils.helpers import std_team
 
 
 def _row(mid, day, home, away, hg, ag, league="PL", season="2425"):
@@ -16,8 +17,8 @@ def _row(mid, day, home, away, hg, ag, league="PL", season="2425"):
         "season": season,
         "home_team": home,
         "away_team": away,
-        "home_std": home.lower(),
-        "away_std": away.lower(),
+        "home_std": std_team(home),
+        "away_std": std_team(away),
         "home_score": hg,
         "away_score": ag,
         "home_shots": 10,
@@ -78,3 +79,36 @@ def test_elo_moves_after_apply():
     state.apply(_row(1, 0, "Alpha", "Beta", 3, 0))
     assert state.elo["alpha"] > before
     assert state.elo["beta"] < ELO_START
+
+
+def test_std_team_aliases_collapse_common_variants():
+    assert std_team("Man United") == std_team("Manchester United")
+    assert std_team("Betis") == std_team("Real Betis")
+    assert std_team("VfL Bochum") == std_team("Bochum")
+    assert std_team("1899 Hoffenheim") == std_team("TSG Hoffenheim")
+
+
+def test_alias_names_share_form_and_elo():
+    finished = [
+        _row(1, 0, "Man United", "Brighton", 2, 0),
+        _row(2, 10, "Manchester United", "Chelsea", 1, 0),
+    ]
+    import pandas as pd
+
+    fixtures = pd.DataFrame(
+        [
+            {
+                "match_id": 2,
+                "home_team": "Manchester United",
+                "away_team": "Chelsea",
+                "league": "PL",
+                "season": "2425",
+                "match_date": finished[1]["match_date"],
+                "result": "H",
+            }
+        ]
+    )
+    out = build_feature_matrix(fixtures, db=None, finished_rows=finished)
+    assert out.loc[0, "home_played"] == 1
+    assert out.loc[0, "home_points"] == 3
+    assert out.loc[0, "home_elo"] != ELO_START
